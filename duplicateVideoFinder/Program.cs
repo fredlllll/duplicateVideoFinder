@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 
 namespace duplicateVideoFinder
 {
@@ -8,54 +10,46 @@ namespace duplicateVideoFinder
     {
         static void Main(string[] args)
         {
-            if(args.Length < 1)
+            if (args.Length < 1)
             {
                 Console.WriteLine("please provide a folder");
                 return;
             }
 
+            Console.WriteLine("fuck me");
+            Console.Clear();
+
             DirectoryInfo di = new DirectoryInfo(args[0]);
 
-            var files = di.EnumerateFiles("*", SearchOption.AllDirectories);
+            var finder = new HashDuplicateFinder();
 
-            Dictionary<string, List<FileInfo>> comparisonResults = new Dictionary<string, List<FileInfo>>();
+            finder.OnProgress += Finder_OnProgress;
 
-            var hashFileComparer = new HashFileComparer();
+            var dupes = finder.FindDuplicates(di);
 
-            foreach(FileInfo f in files)
+            JArray result = new JArray();
+
+            foreach (var dupe in dupes)
             {
-                string hash = hashFileComparer.HashToString(hashFileComparer.GetSmallHash(f));
-
-                if(!comparisonResults.TryGetValue(hash,out List<FileInfo> fileList))
+                JArray fileList = new JArray();
+                foreach (var fi in dupe)
                 {
-                    fileList = new List<FileInfo>();
-                    comparisonResults[hash] = fileList;
+                    fileList.Add(fi.FullName);
                 }
-                fileList.Add(f);
+                result.Add(fileList);
             }
 
-            List<string> hashesToForget = new List<string>();
-            foreach(var kv in comparisonResults)
-            {
-                if(kv.Value.Count == 1)
-                {
-                    hashesToForget.Add(kv.Key);
-                }
-            }
-            foreach(var htf in hashesToForget)
-            {
-                comparisonResults.Remove(htf);
-            }
+            Console.WriteLine(result.ToString());
+        }
 
-            foreach(var kv in comparisonResults)
-            {
-                Console.WriteLine(kv.Key + ":");
-                foreach(var f in kv.Value)
-                {
-                    Console.WriteLine(f.FullName);
-                }
-                Console.WriteLine();
-            }
+        private static void Finder_OnProgress(Progresses.IProgress progress)
+        {
+            Console.CursorTop = 0;
+            Console.CursorLeft = 0;
+            Console.Write("".PadLeft(Console.BufferWidth, ' '));
+            Console.CursorTop = 0;
+            Console.CursorLeft = 0;
+            Console.Write("Progress: " + progress.ToString());
         }
     }
 }
