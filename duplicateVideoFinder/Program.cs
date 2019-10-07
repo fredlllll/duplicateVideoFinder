@@ -21,7 +21,7 @@ namespace duplicateVideoFinder
 
             DirectoryInfo di = new DirectoryInfo(args[0]);
 
-            var finder = new HashDuplicateFinder();
+            var finder = new DuplicateFinder(null); //TODO: depends on input
 
             finder.OnProgress += Finder_OnProgress;
 
@@ -29,14 +29,17 @@ namespace duplicateVideoFinder
 
             JArray result = new JArray();
 
-            foreach (var dupe in dupes)
+            foreach (var gen in dupes.dupeListsByGenerator)
             {
-                JArray fileList = new JArray();
-                foreach (var fi in dupe)
+                foreach (var dupe in gen)
                 {
-                    fileList.Add(fi.FullName);
+                    JArray fileList = new JArray();
+                    foreach (var fi in dupe)
+                    {
+                        fileList.Add(fi.FullName);
+                    }
+                    result.Add(fileList);
                 }
-                result.Add(fileList);
             }
 
             Console.WriteLine(result.ToString());
