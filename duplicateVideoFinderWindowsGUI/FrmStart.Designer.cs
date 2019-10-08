@@ -86,7 +86,6 @@
             // chkDuration
             // 
             this.chkDuration.AutoSize = true;
-            this.chkDuration.Enabled = false;
             this.chkDuration.Location = new System.Drawing.Point(12, 82);
             this.chkDuration.Name = "chkDuration";
             this.chkDuration.Size = new System.Drawing.Size(115, 17);

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
-
-namespace duplicateVideoFinder.Metrics
+﻿namespace duplicateVideoFinder.Metrics
 {
     public class HashMetric : AMetric
     {

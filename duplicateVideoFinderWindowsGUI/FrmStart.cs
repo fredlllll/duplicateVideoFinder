@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using duplicateVideoFinder;
@@ -42,7 +37,7 @@ namespace duplicateVideoFinderWindowsGUI
             }
             if (chkDuration.Checked)
             {
-                //gens.Add(new DurationMetricGenerator());
+                gens.Add(new DurationMetricGenerator());
             }
             if (chkThumb.Checked)
             {

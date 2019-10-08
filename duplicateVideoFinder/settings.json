@@ -1,0 +1,16 @@
+{
+  "extensionsToProcess": [
+    "3gp",
+    "avi",
+    "flv",
+    "m4v",
+    "mkv",
+    "mov",
+    "mp4",
+    "mpg",
+    "mpeg",
+    "rm",
+    "webm",
+    "wmv"
+  ]
+}

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace duplicateVideoFinder.Progresses
+﻿namespace duplicateVideoFinder.Progresses
 {
     public interface IProgress
     {

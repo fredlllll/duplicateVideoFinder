@@ -1,14 +1,11 @@
 ﻿using duplicateVideoFinder;
+using Microsoft.WindowsAPICodePack.Shell;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Xabe.FFmpeg;
 
 namespace duplicateVideoFinderWindowsGUI
 {
@@ -29,7 +26,12 @@ namespace duplicateVideoFinderWindowsGUI
 
         Bitmap MakeThumb(FileInfo fi)
         {
-            var tmpPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".jpg");
+            ShellFile shell = ShellFile.FromFilePath(fi.FullName);
+            var tttt = shell.Properties.System.Video;
+            return shell.Thumbnail.ExtraLargeBitmap;
+            
+
+            /*var tmpPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".jpg");
             Conversion.Snapshot(fi.FullName, tmpPath, TimeSpan.FromSeconds(15)).Start().Wait();
             Bitmap daImg = new Bitmap(128, 128);
             using (var g = Graphics.FromImage(daImg))
@@ -40,7 +42,7 @@ namespace duplicateVideoFinderWindowsGUI
             }
             File.Delete(tmpPath);
 
-            return daImg;
+            return daImg;*/
         }
 
         Task SetCurrentDupes(List<FileInfo> dupes)

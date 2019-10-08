@@ -1,12 +1,12 @@
 ﻿using duplicateVideoFinder.MetricGenerators;
 using duplicateVideoFinder.Metrics;
 using duplicateVideoFinder.Progresses;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace duplicateVideoFinder
@@ -55,16 +55,35 @@ namespace duplicateVideoFinder
             this.generators = generators;
         }
 
+        private string GetSearchRegex()
+        {
+            JArray extensions = Settings.appSettings.Data["extensionsToProcess"] as JArray;
+            if (extensions != null && extensions.Count > 0)
+            {
+                List<string> parts = new List<string>();
+                foreach (var token in extensions)
+                {
+                    var ext = token.Value<string>();
+                    parts.Add("(.*\\." + ext + "$)");
+                }
+                return string.Join('|', parts);
+            }
+            return ".*";
+        }
+
         public DuplicateFinderResult FindDuplicates(DirectoryInfo dir)
         {
             OnProgress?.Invoke(new BasicProgress(0, "Starting up..."));
-            var files = dir.EnumerateFiles("*", SearchOption.AllDirectories);
+
+            string searchRegex = GetSearchRegex();
+
+            var files = Helpers.EnumerateFiles(dir, searchRegex, SearchOption.AllDirectories);
             int fileCount = 0;
 
             //get the total count of files asynchronously so we can start collecting metrics using the enumerator
             var fileCountTask = new Task(() =>
             {
-                var getFiles = dir.GetFiles("*", SearchOption.AllDirectories);
+                var getFiles = Helpers.GetFiles(dir, searchRegex, SearchOption.AllDirectories);
                 fileCount = getFiles.Length;
             });
             fileCountTask.Start();
@@ -91,14 +110,17 @@ namespace duplicateVideoFinder
                 for (int i = 0; i < generators.Length; i++)
                 {
                     var metric = item[0];
-                    var dupeDict = duplicates[i];
-                    List<FileInfo> dupeFiles;
-                    if (!dupeDict.TryGetValue(metric, out dupeFiles))
+                    if (metric != null)
                     {
-                        dupeFiles = new List<FileInfo>();
-                        dupeDict[metric] = dupeFiles;
+                        var dupeDict = duplicates[i];
+                        List<FileInfo> dupeFiles;
+                        if (!dupeDict.TryGetValue(metric, out dupeFiles))
+                        {
+                            dupeFiles = new List<FileInfo>();
+                            dupeDict[metric] = dupeFiles;
+                        }
+                        dupeFiles.Add(item.File);
                     }
-                    dupeFiles.Add(item.File);
                 }
             }
 

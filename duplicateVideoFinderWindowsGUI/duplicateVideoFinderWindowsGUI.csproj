@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Xabe.FFmpeg" Version="3.5.0" />
+    <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.3.3" />
   </ItemGroup>
 
   <ItemGroup>
