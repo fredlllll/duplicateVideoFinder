@@ -13,11 +13,11 @@ namespace duplicateVideoFinderWindowsGUI
     {
         DuplicateFinderResult dfr;
         int currentGenIndex = 0;
-        List<List<FileInfo>> CurrentGen
+        List<DupeCollection> CurrentGen
         {
             get { return dfr.dupeListsByGenerator[currentGenIndex]; }
         }
-        List<FileInfo> currentDupes;
+        DupeCollection currentDupes;
 
         public FrmSelectFilesToKeep()
         {
@@ -45,7 +45,7 @@ namespace duplicateVideoFinderWindowsGUI
             return daImg;*/
         }
 
-        Task SetCurrentDupes(List<FileInfo> dupes)
+        Task SetCurrentDupes(DupeCollection dupes)
         {
             return new Task(new Action(() =>
             {

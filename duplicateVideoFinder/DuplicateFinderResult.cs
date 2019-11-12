@@ -5,14 +5,14 @@ namespace duplicateVideoFinder
 {
     public class DuplicateFinderResult
     {
-        public List<List<FileInfo>>[] dupeListsByGenerator;
+        public List<DupeCollection>[] dupeListsByGenerator;
 
         public DuplicateFinderResult(int generatorCount)
         {
-            dupeListsByGenerator = new List<List<FileInfo>>[generatorCount];
+            dupeListsByGenerator = new List<DupeCollection>[generatorCount];
             for(int i =0; i< dupeListsByGenerator.Length; i++)
             {
-                dupeListsByGenerator[i] = new List<List<FileInfo>>();
+                dupeListsByGenerator[i] = new List<DupeCollection>();
             }
         }
     }

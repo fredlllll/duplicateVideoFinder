@@ -34,14 +34,14 @@ namespace duplicateVideoFinder
             }
         }
 
-        private class IntermediateResult : List<Dictionary<AMetric, List<FileInfo>>>
+        private class IntermediateResult : List<Dictionary<AMetric, DupeCollection>>
         {
             public IntermediateResult(int count)
             {
                 var comparer = new EqualsComparer<AMetric>();
                 for (int i = 0; i < count; i++)
                 {
-                    this.Add(new Dictionary<AMetric, List<FileInfo>>(comparer));
+                    this.Add(new Dictionary<AMetric, DupeCollection>(comparer));
                 }
             }
         }
@@ -99,7 +99,7 @@ namespace duplicateVideoFinder
                     fmc.Add(gen.Generate(f));
                 }
                 metrics.Add(fmc);
-                currentFile++;//TODO: make this threadsafe
+                currentFile++;//TODO: make this threadsafe, but its only for progress report so low priority
                 OnProgress?.Invoke(new FractionalProgress(currentFile, fileCount, f.FullName));
             }));
 
@@ -113,10 +113,10 @@ namespace duplicateVideoFinder
                     if (metric != null)
                     {
                         var dupeDict = duplicates[i];
-                        List<FileInfo> dupeFiles;
+                        DupeCollection dupeFiles;
                         if (!dupeDict.TryGetValue(metric, out dupeFiles))
                         {
-                            dupeFiles = new List<FileInfo>();
+                            dupeFiles = new DupeCollection();
                             dupeDict[metric] = dupeFiles;
                         }
                         dupeFiles.Add(item.File);
