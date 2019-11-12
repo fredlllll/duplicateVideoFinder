@@ -34,14 +34,14 @@ namespace duplicateVideoFinder
             }
         }
 
-        private class IntermediateResult : List<Dictionary<AMetric, DupeCollection>>
+        private class IntermediateResult : List<Dictionary<AMetric, DupeFileCollection>>
         {
             public IntermediateResult(int count)
             {
                 var comparer = new EqualsComparer<AMetric>();
                 for (int i = 0; i < count; i++)
                 {
-                    this.Add(new Dictionary<AMetric, DupeCollection>(comparer));
+                    this.Add(new Dictionary<AMetric, DupeFileCollection>(comparer));
                 }
             }
         }
@@ -55,6 +55,10 @@ namespace duplicateVideoFinder
             this.generators = generators;
         }
 
+        /// <summary>
+        /// creates a regex to test against filenames
+        /// </summary>
+        /// <returns></returns>
         private string GetSearchRegex()
         {
             JArray extensions = Settings.appSettings.Data["extensionsToProcess"] as JArray;
@@ -78,8 +82,8 @@ namespace duplicateVideoFinder
             string searchRegex = GetSearchRegex();
 
             var files = Helpers.EnumerateFiles(dir, searchRegex, SearchOption.AllDirectories);
-            int fileCount = 0;
 
+            int fileCount = 0;
             //get the total count of files asynchronously so we can start collecting metrics using the enumerator
             var fileCountTask = new Task(() =>
             {
@@ -88,55 +92,55 @@ namespace duplicateVideoFinder
             });
             fileCountTask.Start();
 
-            ConcurrentBag<FileMetricsCollection> metrics = new ConcurrentBag<FileMetricsCollection>();
+            List<MetricDict> metricsPerGenerator = new List<MetricDict>();
 
             int currentFile = 0;
-            Parallel.ForEach(files, new Action<FileInfo>((f) =>
+            foreach (var gen in generators)
             {
-                FileMetricsCollection fmc = new FileMetricsCollection(f);
-                foreach (var gen in generators)
+                MetricDict fileMetrics = new MetricDict();
+                Parallel.ForEach(files, new Action<FileInfo>((f) =>
                 {
-                    fmc.Add(gen.Generate(f));
-                }
-                metrics.Add(fmc);
-                currentFile++;//TODO: make this threadsafe, but its only for progress report so low priority
-                OnProgress?.Invoke(new FractionalProgress(currentFile, fileCount, f.FullName));
-            }));
-
-
-            IntermediateResult duplicates = new IntermediateResult(generators.Length);
-            foreach (var item in metrics)
-            {
-                for (int i = 0; i < generators.Length; i++)
-                {
-                    var metric = item[0];
-                    if (metric != null)
-                    {
-                        var dupeDict = duplicates[i];
-                        DupeCollection dupeFiles;
-                        if (!dupeDict.TryGetValue(metric, out dupeFiles))
-                        {
-                            dupeFiles = new DupeCollection();
-                            dupeDict[metric] = dupeFiles;
-                        }
-                        dupeFiles.Add(item.File);
-                    }
-                }
+                    fileMetrics[f] = gen.Generate(f);
+                    currentFile++;
+                    OnProgress?.Invoke(new FractionalProgress(currentFile, fileCount * generators.Length, f.FullName));
+                }));
+                metricsPerGenerator.Add(fileMetrics);
             }
 
-            DuplicateFinderResult dfr = new DuplicateFinderResult(generators.Length);
+            DuplicateFinderResult dfr = new DuplicateFinderResult();
 
             for (int i = 0; i < generators.Length; i++)
             {
-                var dupes = duplicates[i];
-                var dupesList = dfr.dupeListsByGenerator[i];
-                foreach (var kv in dupes)
+                Dictionary<AMetric, DupeFileCollection> filesByMetrics = new Dictionary<AMetric, DupeFileCollection>();
+                foreach (var kv in metricsPerGenerator[i]) //running over metrics of each generator
                 {
-                    dupesList.Add(kv.Value);
+                    if(kv.Value == null)
+                    {
+                        continue;
+                    }
+                    DupeFileCollection dfc;
+                    if (!filesByMetrics.TryGetValue(kv.Value, out dfc))
+                    {
+                        dfc = new DupeFileCollection(kv.Value);
+                        filesByMetrics[kv.Value] = dfc;
+                    }
+                    dfc.Add(kv.Key);
                 }
+
+                DupeCollection dc = new DupeCollection();
+
+                foreach (var kv in filesByMetrics)
+                {
+                    if (kv.Value.Count > 1)
+                    {
+                        dc.Add(kv.Value);
+                    }
+                }
+                dfr.dupesByGenerator.Add(dc);
             }
 
             OnProgress?.Invoke(new BasicProgress(1, "Done"));
+
             return dfr;
         }
     }

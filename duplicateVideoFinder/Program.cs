@@ -27,7 +27,7 @@ namespace duplicateVideoFinder
 
             JArray result = new JArray();
 
-            foreach (var gen in dupes.dupeListsByGenerator)
+            foreach (var gen in dupes.dupesByGenerator)
             {
                 foreach (var dupe in gen)
                 {

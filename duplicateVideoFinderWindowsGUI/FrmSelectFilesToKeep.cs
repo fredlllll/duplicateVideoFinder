@@ -13,11 +13,18 @@ namespace duplicateVideoFinderWindowsGUI
     {
         DuplicateFinderResult dfr;
         int currentGenIndex = 0;
-        List<DupeCollection> CurrentGen
+        List<DupeFileCollection> CurrentGen
         {
-            get { return dfr.dupeListsByGenerator[currentGenIndex]; }
+            get
+            {
+                if (dfr.dupesByGenerator.Count > 0)
+                {
+                    return dfr.dupesByGenerator[currentGenIndex];
+                }
+                return null;
+            }
         }
-        DupeCollection currentDupes;
+        DupeFileCollection currentDupes;
 
         public FrmSelectFilesToKeep()
         {
@@ -29,7 +36,7 @@ namespace duplicateVideoFinderWindowsGUI
             ShellFile shell = ShellFile.FromFilePath(fi.FullName);
             var tttt = shell.Properties.System.Video;
             return shell.Thumbnail.ExtraLargeBitmap;
-            
+
 
             /*var tmpPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".jpg");
             Conversion.Snapshot(fi.FullName, tmpPath, TimeSpan.FromSeconds(15)).Start().Wait();
@@ -45,7 +52,7 @@ namespace duplicateVideoFinderWindowsGUI
             return daImg;*/
         }
 
-        Task SetCurrentDupes(DupeCollection dupes)
+        Task SetCurrentDupes(DupeFileCollection dupes)
         {
             return new Task(new Action(() =>
             {
@@ -102,7 +109,7 @@ namespace duplicateVideoFinderWindowsGUI
                 }
             }
             var cg = CurrentGen;
-            if (cg.Count > 0)
+            if (cg != null && cg.Count > 0)
             {
                 var tmp = cg[cg.Count - 1];
                 cg.RemoveAt(cg.Count - 1);
