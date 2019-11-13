@@ -2,9 +2,9 @@
 {
     public class DurationMetric : AMetric
     {
-        private readonly ulong duration;
+        public ulong duration;
 
-        public DurationMetric(ulong duration)
+        public DurationMetric(ulong duration = 0)
         {
             this.duration = duration;
         }

@@ -53,7 +53,6 @@ namespace duplicateVideoFinderWindowsGUI
                 return finder.FindDuplicates(di);
             });
 
-            //TODO: go to next form
             this.Hide();
             nextForm.Show();
             nextForm.SetDuplicates(dupes);

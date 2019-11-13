@@ -7,6 +7,8 @@ namespace duplicateVideoFinder.MetricGenerators
 {
     public class DurationMetricGenerator : AMetricGenerator
     {
+        public string ID => "durationmetric";
+
         public AMetric Generate(FileInfo file)
         {
             var t = Probe.New().Start("-v quiet -of json -show_format -show_streams \"" + file.FullName+"\"");

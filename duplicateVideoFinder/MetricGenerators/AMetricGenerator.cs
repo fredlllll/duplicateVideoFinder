@@ -5,6 +5,7 @@ namespace duplicateVideoFinder.MetricGenerators
 {
     public interface AMetricGenerator
     {
+        string ID { get; }
         AMetric Generate(FileInfo file);
     }
 }

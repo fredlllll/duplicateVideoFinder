@@ -2,9 +2,9 @@
 {
     public class HashMetric : AMetric
     {
-        private readonly byte[] hash;
+        public byte[] hash;
 
-        public HashMetric(byte[] hash)
+        public HashMetric(byte[] hash = null)
         {
             this.hash = hash;
         }

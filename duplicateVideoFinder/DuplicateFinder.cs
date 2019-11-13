@@ -1,6 +1,7 @@
 ﻿using duplicateVideoFinder.MetricGenerators;
 using duplicateVideoFinder.Metrics;
 using duplicateVideoFinder.Progresses;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
@@ -75,6 +76,86 @@ namespace duplicateVideoFinder
             return ".*";
         }
 
+        string GetMetricsFileName(DirectoryInfo directory, string id)
+        {
+            return directory.GetHashCode() + "_" + id + "_metrics.json";
+        }
+
+        void SaveMetrics(MetricDict dict, DirectoryInfo directory, string id)
+        {
+            string filename = GetMetricsFileName(directory, id);
+
+            JObject obj = new JObject();
+            JArray data = new JArray();
+            Dictionary<Type, int> typeDict = new Dictionary<Type, int>();
+            obj["directory"] = directory.FullName;
+            obj["data"] = data;
+            foreach (var kv in dict)
+            {
+                JObject entry = new JObject();
+
+                int typeId;
+                if (!typeDict.TryGetValue(kv.Value.GetType(), out typeId))
+                {
+                    typeId = typeDict.Count;
+                    typeDict[kv.Value.GetType()] = typeId;
+                }
+                entry["type"] = typeId;
+                entry["metric"] = JObject.FromObject(kv.Value);
+                entry["file"] = kv.Key.FullName;
+                data.Add(entry);
+            }
+            JObject typeDictJson = new JObject();
+            foreach (var kv in typeDict)
+            {
+                typeDictJson[kv.Value.ToString()] = kv.Key.AssemblyQualifiedName;
+            }
+            obj["types"] = typeDictJson;
+
+            using (FileStream fs = new FileStream(filename, FileMode.Create))
+            using (StreamWriter sw = new StreamWriter(fs))
+            using (JsonTextWriter jtw = new JsonTextWriter(sw))
+            {
+                obj.WriteTo(jtw);
+            }
+        }
+
+        MetricDict LoadMetrics(DirectoryInfo directory, string id)
+        {
+            string filename = GetMetricsFileName(directory, id);
+            if (File.Exists(filename))
+            {
+                MetricDict metricDict = new MetricDict();
+
+                JObject metrics;
+                using (FileStream fs = new FileStream(filename, FileMode.Open))
+                using (StreamReader sr = new StreamReader(fs))
+                using (JsonTextReader jtr = new JsonTextReader(sr))
+                {
+                    metrics = JObject.Load(jtr);
+                }
+
+                //recover type dict but with id as index
+                Dictionary<int, Type> typeDict = new Dictionary<int, Type>();
+                JObject typeDictJson = metrics["types"] as JObject;
+                foreach (var kv in typeDictJson)
+                {
+                    typeDict[int.Parse(kv.Key)] = Type.GetType(kv.Value.Value<string>());
+                }
+
+                JArray data = metrics["data"] as JArray;
+                foreach (JObject entry in data)
+                {
+                    Type t = typeDict[entry["type"].Value<int>()];
+                    AMetric metric = entry["metric"].ToObject(t) as AMetric;
+                    FileInfo file = new FileInfo(entry["file"].Value<string>());
+                    metricDict[file] = metric;
+                }
+                return metricDict;
+            }
+            return null;
+        }
+
         public DuplicateFinderResult FindDuplicates(DirectoryInfo dir)
         {
             OnProgress?.Invoke(new BasicProgress(0, "Starting up..."));
@@ -95,15 +176,21 @@ namespace duplicateVideoFinder
             List<MetricDict> metricsPerGenerator = new List<MetricDict>();
 
             int currentFile = 0;
-            foreach (var gen in generators)
+            foreach (var gen in generators) //should i make this a parallel foreach too? most of it is IO heavy
             {
-                MetricDict fileMetrics = new MetricDict();
-                Parallel.ForEach(files, new Action<FileInfo>((f) =>
+                MetricDict fileMetrics = LoadMetrics(dir, gen.ID);
+                if (fileMetrics == null)
                 {
-                    fileMetrics[f] = gen.Generate(f);
-                    currentFile++;
-                    OnProgress?.Invoke(new FractionalProgress(currentFile, fileCount * generators.Length, f.FullName));
-                }));
+                    fileMetrics = new MetricDict();
+                    Parallel.ForEach(files, new Action<FileInfo>((f) =>
+                    {
+                        fileMetrics[f] = gen.Generate(f);
+                        currentFile++;
+                        OnProgress?.Invoke(new FractionalProgress(currentFile, fileCount * generators.Length, f.FullName));
+                    }));
+
+                    SaveMetrics(fileMetrics, dir, gen.ID);
+                }
                 metricsPerGenerator.Add(fileMetrics);
             }
 
@@ -114,7 +201,7 @@ namespace duplicateVideoFinder
                 Dictionary<AMetric, DupeFileCollection> filesByMetrics = new Dictionary<AMetric, DupeFileCollection>();
                 foreach (var kv in metricsPerGenerator[i]) //running over metrics of each generator
                 {
-                    if(kv.Value == null)
+                    if (kv.Value == null)
                     {
                         continue;
                     }

@@ -13,6 +13,8 @@ namespace duplicateVideoFinder.MetricGenerators
             this.hashedBytesCount = hashedBytesCount;
         }
 
+        public string ID => "hashmetric";
+
         public AMetric Generate(FileInfo file)
         {
             byte[] hash = null;
