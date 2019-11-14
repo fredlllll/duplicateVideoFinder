@@ -51,9 +51,14 @@ namespace duplicateVideoFinderWindowsGUI
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lstFiles.CheckBoxes = true;
+            this.lstFiles.HideSelection = false;
+            this.lstFiles.LabelWrap = false;
             this.lstFiles.Location = new System.Drawing.Point(12, 43);
             this.lstFiles.Name = "lstFiles";
+            this.lstFiles.ShowGroups = false;
+            this.lstFiles.ShowItemToolTips = true;
             this.lstFiles.Size = new System.Drawing.Size(780, 356);
+            this.lstFiles.Sorting = System.Windows.Forms.SortOrder.Ascending;
             this.lstFiles.TabIndex = 0;
             this.lstFiles.UseCompatibleStateImageBehavior = false;
             // 

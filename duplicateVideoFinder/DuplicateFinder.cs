@@ -8,6 +8,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace duplicateVideoFinder
@@ -78,7 +80,10 @@ namespace duplicateVideoFinder
 
         string GetMetricsFileName(DirectoryInfo directory, string id)
         {
-            return directory.GetHashCode() + "_" + id + "_metrics.json";
+            using var md5 = MD5.Create();
+            var dirNameHashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(directory.FullName));
+            string dirNameHash = BitConverter.ToString(dirNameHashBytes).Replace("-", string.Empty);
+            return dirNameHash + "_" + id + "_metrics.json";
         }
 
         void SaveMetrics(MetricDict dict, DirectoryInfo directory, string id)
@@ -156,19 +161,24 @@ namespace duplicateVideoFinder
             return null;
         }
 
-        public DuplicateFinderResult FindDuplicates(DirectoryInfo dir)
+        public DuplicateFinderResult FindDuplicates(DirectoryInfo dir, bool topDirOnly = false)
         {
             OnProgress?.Invoke(new BasicProgress(0, "Starting up..."));
 
             string searchRegex = GetSearchRegex();
 
-            var files = Helpers.EnumerateFiles(dir, searchRegex, SearchOption.AllDirectories);
+            SearchOption filesSearchOption = SearchOption.AllDirectories;
+            if (topDirOnly)
+            {
+                filesSearchOption = SearchOption.TopDirectoryOnly;
+            }
+            var files = Helpers.EnumerateFiles(dir, searchRegex, filesSearchOption);
 
             int fileCount = 0;
             //get the total count of files asynchronously so we can start collecting metrics using the enumerator
             var fileCountTask = new Task(() =>
             {
-                var getFiles = Helpers.GetFiles(dir, searchRegex, SearchOption.AllDirectories);
+                var getFiles = Helpers.GetFiles(dir, searchRegex, filesSearchOption);
                 fileCount = getFiles.Length;
             });
             fileCountTask.Start();
@@ -176,7 +186,7 @@ namespace duplicateVideoFinder
             List<MetricDict> metricsPerGenerator = new List<MetricDict>();
 
             int currentFile = 0;
-            foreach (var gen in generators) //should i make this a parallel foreach too? most of it is IO heavy
+            foreach (var gen in generators) //should i make this a parallel foreach too? most of it is IO heavy, so only gain would be for saving and loading metrics
             {
                 MetricDict fileMetrics = LoadMetrics(dir, gen.ID);
                 if (fileMetrics == null)

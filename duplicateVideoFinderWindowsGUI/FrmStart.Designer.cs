@@ -33,6 +33,7 @@
             this.chkThumb = new System.Windows.Forms.CheckBox();
             this.btnSearch = new System.Windows.Forms.Button();
             this.fbd = new System.Windows.Forms.FolderBrowserDialog();
+            this.chkTopDir = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // label1
@@ -68,7 +69,7 @@
             // 
             this.progressBar1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.progressBar1.Location = new System.Drawing.Point(12, 132);
+            this.progressBar1.Location = new System.Drawing.Point(12, 140);
             this.progressBar1.Name = "progressBar1";
             this.progressBar1.Size = new System.Drawing.Size(562, 23);
             this.progressBar1.TabIndex = 3;
@@ -109,7 +110,7 @@
             this.btnSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnSearch.Location = new System.Drawing.Point(447, 23);
             this.btnSearch.Name = "btnSearch";
-            this.btnSearch.Size = new System.Drawing.Size(127, 23);
+            this.btnSearch.Size = new System.Drawing.Size(127, 25);
             this.btnSearch.TabIndex = 7;
             this.btnSearch.Text = "Search";
             this.btnSearch.UseVisualStyleBackColor = true;
@@ -119,9 +120,21 @@
             // 
             this.fbd.RootFolder = System.Environment.SpecialFolder.MyComputer;
             // 
+            // chkTopDir
+            // 
+            this.chkTopDir.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.chkTopDir.AutoSize = true;
+            this.chkTopDir.Location = new System.Drawing.Point(489, 82);
+            this.chkTopDir.Name = "chkTopDir";
+            this.chkTopDir.Size = new System.Drawing.Size(85, 17);
+            this.chkTopDir.TabIndex = 8;
+            this.chkTopDir.Text = "Top Dir Only";
+            this.chkTopDir.UseVisualStyleBackColor = true;
+            // 
             // FrmStart
             // 
-            this.ClientSize = new System.Drawing.Size(586, 167);
+            this.ClientSize = new System.Drawing.Size(586, 175);
+            this.Controls.Add(this.chkTopDir);
             this.Controls.Add(this.btnSearch);
             this.Controls.Add(this.chkThumb);
             this.Controls.Add(this.chkDuration);
@@ -147,6 +160,7 @@
         private System.Windows.Forms.CheckBox chkThumb;
         private System.Windows.Forms.Button btnSearch;
         private System.Windows.Forms.FolderBrowserDialog fbd;
+        private System.Windows.Forms.CheckBox chkTopDir;
     }
 }
 

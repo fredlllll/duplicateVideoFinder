@@ -76,19 +76,22 @@ namespace duplicateVideoFinderWindowsGUI
                 for (int i = 0; i < dupes.Count; i++)
                 {
                     var f = dupes[i];
-                    Image thumb = MakeThumb(f);
-                    this.BeginInvoke(new Action(() =>
+                    if (f.Exists)
                     {
-                        lstFiles.LargeImageList.Images.Add(f.FullName, thumb);
+                        Image thumb = MakeThumb(f);
+                        this.BeginInvoke(new Action(() =>
+                        {
+                            lstFiles.LargeImageList.Images.Add(f.FullName, thumb);
 
-                        var li = new ListViewItem();
-                        li.Text = f.Name;
-                        li.Checked = true;
-                        li.ImageKey = f.FullName;
-                        li.Tag = f;
+                            var li = new ListViewItem();
+                            li.Text = f.Name;
+                            li.Checked = true;
+                            li.ImageKey = f.FullName;
+                            li.Tag = f;
 
-                        lstFiles.Items.Add(li);
-                    }));
+                            lstFiles.Items.Add(li);
+                        }));
+                    }
                 }
             }));
         }
@@ -109,16 +112,36 @@ namespace duplicateVideoFinderWindowsGUI
                 }
             }
             var cg = CurrentGen;
-            if (cg != null && cg.Count > 0)
+            while (true)
             {
-                var tmp = cg[cg.Count - 1];
-                cg.RemoveAt(cg.Count - 1);
-                SetCurrentDupes(tmp).Start();
-            }
-            else
-            {
-                MessageBox.Show("Thats it! No more dupes");
-                this.Close();
+                if (cg != null && cg.Count > 0)
+                {
+                    //pop next dupecollection
+                    var tmp = cg[cg.Count - 1];
+                    cg.RemoveAt(cg.Count - 1);
+
+                    int existingFiles = 0;
+                    foreach (var f in tmp)
+                    {
+                        if (f.Exists)
+                        {
+                            existingFiles++;
+                        }
+                    }
+                    if (existingFiles <= 1)
+                    {
+                        //if only 1 file or less exist skip it
+                        continue;
+                    }
+                    SetCurrentDupes(tmp).Start();
+                    Text = cg.Count + " Potential Dupes Remaining";
+                }
+                else
+                {
+                    MessageBox.Show("Thats it! No more dupes");
+                    this.Close();
+                }
+                break;
             }
         }
     }

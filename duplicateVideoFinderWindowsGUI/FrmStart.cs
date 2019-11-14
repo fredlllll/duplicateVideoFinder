@@ -50,7 +50,7 @@ namespace duplicateVideoFinderWindowsGUI
             var dupes = await Task.Factory.StartNew(() =>
             {
                 Console.WriteLine("what the fuck");
-                return finder.FindDuplicates(di);
+                return finder.FindDuplicates(di, chkTopDir.Checked);
             });
 
             this.Hide();
