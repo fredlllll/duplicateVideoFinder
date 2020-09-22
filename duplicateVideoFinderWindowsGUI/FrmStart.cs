@@ -26,11 +26,17 @@ namespace duplicateVideoFinderWindowsGUI
 
         private async void btnStart_Click(object sender, EventArgs e)
         {
+            //disable inputs
+            btnSearch.Enabled = false;
             btnStart.Enabled = false;
+            chkHash.Enabled = false;
+            chkDuration.Enabled = false;
+            chkThumb.Enabled = false;
+            chkTopDir.Enabled = false;
+            chkDeleteCache.Enabled = false;
             DirectoryInfo di = new DirectoryInfo(txtDirectory.Text);
 
             var gens = new List<AMetricGenerator>();
-            //TODO: maybe make this generic with reflection?
             if (chkHash.Checked)
             {
                 gens.Add(new HashMetricGenerator());
@@ -44,7 +50,7 @@ namespace duplicateVideoFinderWindowsGUI
                 //gens.Add(new ThumbMetricGenerator());
             }
 
-            IDuplicateFinder finder = new DuplicateFinder(gens.ToArray(), di, chkTopDir.Checked);
+            IDuplicateFinder finder = new DuplicateFinder(gens.ToArray(), di, chkTopDir.Checked, chkDeleteCache.Checked);
             finder.OnProgress += Finder_OnProgress;
 
             var dupes = await Task.Factory.StartNew(() =>
@@ -79,7 +85,44 @@ namespace duplicateVideoFinderWindowsGUI
             if (fbd.ShowDialog() == DialogResult.OK)
             {
                 txtDirectory.Text = fbd.SelectedPath;
+                startButtonEnableCheck();
             }
+        }
+
+        private void startButtonEnableCheck()
+        {
+            int count = 0;
+
+            if (chkHash.Checked)
+            {
+                count++;
+            }
+            if (chkDuration.Checked)
+            {
+                count++;
+            }
+            if (chkThumb.Checked)
+            {
+                count++;
+            }
+
+            btnStart.Enabled = count > 0;
+            if (!btnStart.Enabled)
+            {
+                return;
+            }
+
+            btnStart.Enabled = Directory.Exists(txtDirectory.Text);
+        }
+
+        private void genCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            startButtonEnableCheck();
+        }
+
+        private void txtDirectory_TextChanged(object sender, EventArgs e)
+        {
+            startButtonEnableCheck();
         }
     }
 }

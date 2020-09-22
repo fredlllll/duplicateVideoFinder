@@ -99,5 +99,14 @@ namespace duplicateVideoFinder
             }
             return null;
         }
+
+        public static void DeleteCache(DirectoryInfo directory, string genId)
+        {
+            string filename = GetMetricsFileName(directory, genId);
+            if(File.Exists(filename))
+            {
+                File.Delete(filename);
+            }
+        }
     }
 }

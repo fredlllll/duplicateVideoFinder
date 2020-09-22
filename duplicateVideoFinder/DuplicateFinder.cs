@@ -11,14 +11,16 @@ namespace duplicateVideoFinder
         private readonly AMetricGenerator[] generators;
         private readonly DirectoryInfo dir;
         private readonly bool topDirOnly;
+        private readonly bool deleteCache;
 
         public event IDuplicateFinder.ProgressHandler OnProgress;
 
-        public DuplicateFinder(AMetricGenerator[] generators, DirectoryInfo dir, bool topDirOnly = false)
+        public DuplicateFinder(AMetricGenerator[] generators, DirectoryInfo dir, bool topDirOnly = false, bool deleteCache = false)
         {
             this.generators = generators;
             this.dir = dir;
             this.topDirOnly = topDirOnly;
+            this.deleteCache = deleteCache;
         }
 
         public DuplicateFinderResult FindDuplicates()
@@ -40,7 +42,15 @@ namespace duplicateVideoFinder
 
             foreach (var gen in generators) //should i make this a parallel foreach too? most of it is IO heavy, so only gain would be for saving and loading metrics
             {
-                MetricDict fileMetrics = MetricCache.LoadMetrics(dir, gen.ID);
+                MetricDict fileMetrics = null;
+                if (deleteCache)
+                {
+                    MetricCache.DeleteCache(dir, gen.ID);
+                }
+                else
+                {
+                    fileMetrics = MetricCache.LoadMetrics(dir, gen.ID);
+                }
                 if (fileMetrics == null)
                 {
                     var metricGen = new FolderMetricGenerator(gen, dir, AppSettings.Instance.extensionsToProcess, filesSearchOption);

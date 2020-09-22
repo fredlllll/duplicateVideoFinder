@@ -127,7 +127,15 @@ namespace duplicateVideoFinderWindowsGUI
             {
                 if (!li.Checked)
                 {
-                    File.Delete((li.Tag as FileInfo).FullName);
+                    var fi = li.Tag as FileInfo;
+                    try
+                    {
+                        File.Delete(fi.FullName);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Failed to delete '" + fi.FullName + "' : " + ex.Message);
+                    }
                 }
             }
             var cg = CurrentGen;
