@@ -6,20 +6,21 @@ using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Linq;
 
 namespace duplicateVideoFinderWindowsGUI
 {
     public partial class FrmSelectFilesToKeep : Form
     {
         DuplicateFinderResult dfr;
-        int currentGenIndex = 0;
+        string currentGenId = "";
         List<DupeFileCollection> CurrentGen
         {
             get
             {
                 if (dfr.dupesByGenerator.Count > 0)
                 {
-                    return dfr.dupesByGenerator[currentGenIndex];
+                    return dfr.dupesByGenerator[currentGenId];
                 }
                 return null;
             }
@@ -87,6 +88,7 @@ namespace duplicateVideoFinderWindowsGUI
                             li.Text = f.Name;
                             li.Checked = true;
                             li.ImageKey = f.FullName;
+                            li.ToolTipText = "s: " + FormatFileSize(f.Length) + " f:" + f.DirectoryName;
                             li.Tag = f;
 
                             lstFiles.Items.Add(li);
@@ -96,9 +98,26 @@ namespace duplicateVideoFinderWindowsGUI
             }));
         }
 
+        string FormatFileSize(long bytes)
+        {
+            double len = bytes;
+            string[] sizes = { "B", "KB", "MB", "GB", "TB", "PB", "EB", "YB" };
+            int order = 0;
+            while (len >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                len /= 1024;
+            }
+
+            // Adjust the format string to your preferences. For example "{0:0.#}{1}" would
+            // show a single decimal place, and no space.
+            return String.Format("{0:0.##} {1}", len, sizes[order]);
+        }
+
         public void SetDuplicates(DuplicateFinderResult dfr)
         {
             this.dfr = dfr;
+            this.currentGenId = dfr.dupesByGenerator.First().Key;
             btnNext_Click(null, null);
         }
 

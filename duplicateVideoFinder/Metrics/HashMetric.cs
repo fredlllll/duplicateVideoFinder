@@ -1,4 +1,7 @@
-﻿namespace duplicateVideoFinder.Metrics
+﻿using System;
+using System.Collections.Generic;
+
+namespace duplicateVideoFinder.Metrics
 {
     public class HashMetric : AMetric
     {
@@ -11,11 +14,16 @@
 
         public override bool Equals(object obj)
         {
-            if(!(obj is HashMetric metric))
+            return Equals(obj as AMetric);
+        }
+
+        public override bool Equals(AMetric other)
+        {
+            if (!(other is HashMetric metric))
             {
                 return false;
             }
-            if (this == obj)
+            if (this == metric)
             {
                 return true;
             }
@@ -31,7 +39,7 @@
 
         public override int GetHashCode()
         {
-            return hash[0]+hash[1]+hash[2];
+            return hash[0] + hash[1] + hash[2] + hash[3];
         }
     }
 }

@@ -7,7 +7,7 @@ using System.Text;
 namespace duplicateVideoFinder
 {
     /// <summary>
-    /// a collection of files that are potential duplicates
+    /// a collection of files that are potential duplicates according to a metric
     /// </summary>
     public class DupeFileCollection : List<FileInfo>
     {

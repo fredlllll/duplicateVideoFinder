@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "duplicateVideoFinderConsole": {
+      "commandName": "Project",
+      "commandLineArgs": "J:\\b\\Adult\\"
+    }
+  }
+}

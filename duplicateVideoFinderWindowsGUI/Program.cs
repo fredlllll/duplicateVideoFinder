@@ -1,6 +1,6 @@
 using System;
 using System.Windows.Forms;
-using Xabe.FFmpeg;
+using Xabe.FFmpeg.Downloader;
 
 namespace duplicateVideoFinderWindowsGUI
 {
@@ -12,7 +12,7 @@ namespace duplicateVideoFinderWindowsGUI
         [STAThread]
         static void Main()
         {
-            FFmpeg.GetLatestVersion().Wait(); //TODO: wrap this into a splash or so
+            FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official).Wait(); //TODO: wrap this into a splash or so
 
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();

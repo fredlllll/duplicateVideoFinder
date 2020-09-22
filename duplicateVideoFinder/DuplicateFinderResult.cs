@@ -5,6 +5,6 @@ namespace duplicateVideoFinder
 {
     public class DuplicateFinderResult
     {
-        public List<DupeCollection> dupesByGenerator = new List<DupeCollection>();
+        public Dictionary<string, DupeCollection> dupesByGenerator = new Dictionary<string, DupeCollection>();
     }
 }

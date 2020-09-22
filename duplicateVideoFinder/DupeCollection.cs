@@ -6,6 +6,5 @@ namespace duplicateVideoFinder
 {
     public class DupeCollection : List<DupeFileCollection>
     {
-        
     }
 }

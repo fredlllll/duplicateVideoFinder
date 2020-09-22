@@ -1,19 +1,22 @@
 ﻿using System;
 using System.Windows.Forms;
+using Xabe.FFmpeg.Downloader;
 
 namespace duplicateVideoFinderWindowsGUI
 {
     static class Program
     {
         /// <summary>
-        /// Der Haupteinstiegspunkt für die Anwendung.
+        ///  The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main()
         {
+            FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official).Wait(); //TODO: wrap this into a splash or so
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            Application.Run(new FrmStart());
         }
     }
 }

@@ -44,13 +44,12 @@ namespace duplicateVideoFinderWindowsGUI
                 //gens.Add(new ThumbMetricGenerator());
             }
 
-            IDuplicateFinder finder = new DuplicateFinder(gens.ToArray());
+            IDuplicateFinder finder = new DuplicateFinder(gens.ToArray(), di, chkTopDir.Checked);
             finder.OnProgress += Finder_OnProgress;
 
             var dupes = await Task.Factory.StartNew(() =>
             {
-                Console.WriteLine("what the fuck");
-                return finder.FindDuplicates(di, chkTopDir.Checked);
+                return finder.FindDuplicates();
             });
 
             this.Hide();

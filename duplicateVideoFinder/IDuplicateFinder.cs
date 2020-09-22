@@ -8,6 +8,6 @@ namespace duplicateVideoFinder
         public delegate void ProgressHandler(IProgress progress);
         event ProgressHandler OnProgress;
 
-        DuplicateFinderResult FindDuplicates(DirectoryInfo dir, bool topDirOnly = false);
+        DuplicateFinderResult FindDuplicates();
     }
 }

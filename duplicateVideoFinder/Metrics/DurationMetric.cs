@@ -1,4 +1,6 @@
-﻿namespace duplicateVideoFinder.Metrics
+﻿using System;
+
+namespace duplicateVideoFinder.Metrics
 {
     public class DurationMetric : AMetric
     {
@@ -8,18 +10,24 @@
         {
             this.duration = duration;
         }
+
         public override bool Equals(object obj)
         {
-            if(!( obj is DurationMetric other))
+            return Equals(obj as AMetric);
+        }
+
+        public override bool Equals(AMetric other)
+        {
+            if (!(other is DurationMetric metric))
             {
                 return false;
             }
-            return duration == other.duration;
+            return duration == metric.duration;
         }
 
         public override int GetHashCode()
         {
-            return (int)duration;
+            return HashCode.Combine(duration);
         }
     }
 }
