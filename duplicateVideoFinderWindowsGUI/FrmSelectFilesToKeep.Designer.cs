@@ -32,6 +32,7 @@ namespace duplicateVideoFinderWindowsGUI
         {
             this.btnNext = new System.Windows.Forms.Button();
             this.lstFiles = new System.Windows.Forms.ListView();
+            this.btnSelectBest = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnNext
@@ -62,13 +63,26 @@ namespace duplicateVideoFinderWindowsGUI
             this.lstFiles.TabIndex = 0;
             this.lstFiles.UseCompatibleStateImageBehavior = false;
             // 
+            // btnSelectBest
+            // 
+            this.btnSelectBest.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnSelectBest.Location = new System.Drawing.Point(440, 12);
+            this.btnSelectBest.Name = "btnSelectBest";
+            this.btnSelectBest.Size = new System.Drawing.Size(164, 25);
+            this.btnSelectBest.TabIndex = 1;
+            this.btnSelectBest.Text = "Select Best";
+            this.btnSelectBest.UseVisualStyleBackColor = true;
+            this.btnSelectBest.Click += new System.EventHandler(this.btnSelectBest_Click);
+            // 
             // FrmSelectFilesToKeep
             // 
             this.ClientSize = new System.Drawing.Size(804, 411);
+            this.Controls.Add(this.btnSelectBest);
             this.Controls.Add(this.lstFiles);
             this.Controls.Add(this.btnNext);
             this.Name = "FrmSelectFilesToKeep";
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -76,5 +90,6 @@ namespace duplicateVideoFinderWindowsGUI
         #endregion
 
         private ListView lstFiles;
+        private Button btnSelectBest;
     }
 }

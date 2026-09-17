@@ -26,6 +26,7 @@ namespace duplicateVideoFinderWindowsGUI
             }
         }
         DupeFileCollection currentDupes;
+        FileInfo currentKeeper;
 
         public FrmSelectFilesToKeep()
         {
@@ -55,6 +56,8 @@ namespace duplicateVideoFinderWindowsGUI
 
         Task SetCurrentDupes(DupeFileCollection dupes)
         {
+            FileInfo toKeep = DuplicateKeeper.GetFileToKeep(dupes);
+            currentKeeper = toKeep;
             return new Task(new Action(() =>
             {
                 currentDupes = dupes;
@@ -80,6 +83,7 @@ namespace duplicateVideoFinderWindowsGUI
                     if (f.Exists)
                     {
                         Image thumb = MakeThumb(f);
+                        bool isKeeper = toKeep != null && f.FullName == toKeep.FullName;
                         this.BeginInvoke(new Action(() =>
                         {
                             lstFiles.LargeImageList.Images.Add(f.FullName, thumb);
@@ -87,8 +91,16 @@ namespace duplicateVideoFinderWindowsGUI
                             var li = new ListViewItem();
                             li.Text = f.Name;
                             li.Checked = true;
+                            if (isKeeper)
+                            {
+                                li.BackColor = Color.LightSteelBlue;
+                                li.ToolTipText = "s: " + FormatFileSize(f.Length) + " f:" + f.DirectoryName + "\r\n(Recommended: keep this one)";
+                            }
+                            else
+                            {
+                                li.ToolTipText = "s: " + FormatFileSize(f.Length) + " f:" + f.DirectoryName;
+                            }
                             li.ImageKey = f.FullName;
-                            li.ToolTipText = "s: " + FormatFileSize(f.Length) + " f:" + f.DirectoryName;
                             li.Tag = f;
 
                             lstFiles.Items.Add(li);
@@ -119,6 +131,15 @@ namespace duplicateVideoFinderWindowsGUI
             this.dfr = dfr;
             this.currentGenId = dfr.dupesByGenerator.First().Key;
             btnNext_Click(null, null);
+        }
+
+        private void btnSelectBest_Click(object sender, EventArgs e)
+        {
+            foreach (ListViewItem li in lstFiles.Items)
+            {
+                var fi = li.Tag as FileInfo;
+                li.Checked = currentKeeper != null && fi != null && fi.FullName == currentKeeper.FullName;
+            }
         }
 
         private void btnNext_Click(object sender, EventArgs e)

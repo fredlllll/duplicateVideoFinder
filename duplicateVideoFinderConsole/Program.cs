@@ -92,33 +92,17 @@ namespace duplicateVideoFinderConsole
             int autosorted = 0;
             foreach (var dupeFileCollection in dupes)
             {
-                Dictionary<string, int> filenameCount = new Dictionary<string, int>();
-
+                var toKeep = DuplicateKeeper.GetFileToKeep(dupeFileCollection);
+                if (toKeep == null)
+                {
+                    continue;
+                }
                 foreach (var file in dupeFileCollection)
                 {
-                    var filename = file.Name;
-                    if (filenameCount.TryGetValue(filename, out int count))
-                    {
-                        filenameCount[filename] = count + 1;
-                    }
-                    else
-                    {
-                        filenameCount[filename] = 1;
-                    }
-                }
-
-                foreach (var kv in filenameCount)
-                {
-                    if (kv.Value > 1) //we found a file with the same name
+                    if (file.FullName != toKeep.FullName && file.FullName.Contains("UNSORTED") && file.Exists)
                     {
                         autosorted++;
-                        foreach (var file in dupeFileCollection)
-                        {
-                            if (file.FullName.Contains("UNSORTED"))
-                            {
-                                file.Delete(); //delete file in UNSORTED
-                            }
-                        }
+                        file.Delete(); //delete file in UNSORTED
                     }
                 }
             }
