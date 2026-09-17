@@ -2,7 +2,6 @@
 using duplicateVideoFinder.Progresses;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace duplicateVideoFinder
 {
@@ -29,35 +28,31 @@ namespace duplicateVideoFinder
 
             SearchOption filesSearchOption = topDirOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories;
 
-            int fileCount = 0;
-            //get the total count of files asynchronously so we can start collecting metrics using the enumerator
-            var fileCountTask = new Task(() =>
-            {
-                var getFiles = FileFinder.GetFiles(dir, AppSettings.Instance.extensionsToProcess, filesSearchOption);
-                fileCount = getFiles.Length;
-            });
-            fileCountTask.Start();
+            var currentFiles = FileFinder.GetFiles(dir, AppSettings.Instance.extensionsToProcess, filesSearchOption);
 
             Dictionary<string, MetricDict> metricsPerGenerator = new Dictionary<string, MetricDict>();
 
-            foreach (var gen in generators) //should i make this a parallel foreach too? most of it is IO heavy, so only gain would be for saving and loading metrics
+            foreach (var gen in generators)
             {
-                MetricDict fileMetrics = null;
                 if (deleteCache)
                 {
                     MetricCache.DeleteCache(dir, gen.ID);
                 }
-                else
-                {
-                    fileMetrics = MetricCache.LoadMetrics(dir, gen.ID);
-                }
-                if (fileMetrics == null)
+
+                var loadResult = MetricCache.LoadMetrics(dir, gen.ID, currentFiles);
+
+                if (loadResult.FilesToCompute.Count > 0)
                 {
                     var metricGen = new FolderMetricGenerator(gen, dir, AppSettings.Instance.extensionsToProcess, filesSearchOption);
-                    fileMetrics = metricGen.GenerateMetrics(this);
-                    MetricCache.SaveMetrics(fileMetrics, dir, gen.ID);
+                    var computed = metricGen.GenerateMetrics(loadResult.FilesToCompute, this);
+                    foreach (var kvp in computed)
+                    {
+                        loadResult.Reusable[kvp.Key] = kvp.Value;
+                    }
+                    MetricCache.SaveMetrics(dir, gen.ID, currentFiles, computed);
                 }
-                metricsPerGenerator[gen.ID] = fileMetrics;
+
+                metricsPerGenerator[gen.ID] = loadResult.Reusable;
             }
 
             DuplicateFinderResult dfr = new DuplicateFinderResult();

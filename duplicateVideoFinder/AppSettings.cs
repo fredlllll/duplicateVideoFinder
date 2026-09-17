@@ -25,7 +25,8 @@ namespace duplicateVideoFinder
             }
             else
             {
-                extensionsToProcess = new string[0];
+                throw new InvalidOperationException(
+                    "settings.json does not define a non-empty 'extensionsToProcess' array. Add the video extensions you want to scan.");
             }
         }
     }

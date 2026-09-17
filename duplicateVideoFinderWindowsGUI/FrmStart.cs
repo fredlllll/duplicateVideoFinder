@@ -15,8 +15,17 @@ namespace duplicateVideoFinderWindowsGUI
         public FrmStart()
         {
             this.InitializeComponent();
+            chkDuration.Enabled = false; // enabled once FFmpeg is ready
+            toolTips.SetToolTip(chkDuration, "Check for duplicates using the video duration (needs FFmpeg, downloaded at startup)");
+
             nextForm = new FrmSelectFilesToKeep();
             nextForm.FormClosed += NextForm_FormClosed;
+        }
+
+        public void SetFFmpegReady(bool ready)
+        {
+            chkDuration.Enabled = ready;
+            startButtonEnableCheck();
         }
 
         private void NextForm_FormClosed(object sender, FormClosedEventArgs e)

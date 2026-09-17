@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Xabe.FFmpeg.Downloader;
 
@@ -12,12 +13,34 @@ namespace duplicateVideoFinderWindowsGUI
         [STAThread]
         static void Main()
         {
-            FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official).Wait(); //TODO: wrap this into a splash or so
-
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FrmStart());
+
+            var startup = new FrmStart();
+            DoFFmpegSetupInBackground(startup);
+
+            Application.Run(startup);
+        }
+
+        static void DoFFmpegSetupInBackground(FrmStart startup)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // downloads once into the app folder; subsequent runs skip the download
+                    await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official);
+                }
+                catch
+                {
+                    // FFmpeg unavailable: duration metrics just won't be computed
+                }
+                finally
+                {
+                    startup.BeginInvoke(new Action(() => startup.SetFFmpegReady(true)));
+                }
+            });
         }
     }
 }

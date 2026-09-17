@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using System;
 using System.IO;
 
 namespace duplicateVideoFinder
@@ -9,14 +10,30 @@ namespace duplicateVideoFinder
 
         public Settings(string file = "settings.json")
         {
-            if (File.Exists(file))
+            string path = FindSettingsFile(file);
+            if (path == null)
             {
-                Data = JObject.Parse(File.ReadAllText(file));
+                throw new FileNotFoundException(
+                    "settings.json not found. Expected it in the executable directory or the current working directory.",
+                    file);
             }
-            else
+            Data = JObject.Parse(File.ReadAllText(path));
+        }
+
+        private static string FindSettingsFile(string file)
+        {
+            string exeDir = AppContext.BaseDirectory;
+            string exeDirPath = exeDir != null ? Path.Combine(exeDir, file) : null;
+            if (exeDirPath != null && File.Exists(exeDirPath))
             {
-                Data = new JObject();
+                return exeDirPath;
             }
+            string cwdPath = Path.Combine(Directory.GetCurrentDirectory(), file);
+            if (File.Exists(cwdPath))
+            {
+                return cwdPath;
+            }
+            return null;
         }
     }
 }

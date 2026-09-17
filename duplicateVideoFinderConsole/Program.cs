@@ -1,7 +1,6 @@
 ﻿using duplicateVideoFinder;
 using duplicateVideoFinder.MetricGenerators;
 using duplicateVideoFinder.Progresses;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,32 +9,6 @@ namespace duplicateVideoFinderConsole
 {
     class Program
     {
-        private static void FindDupesAndOutputToJSON(DirectoryInfo di)
-        {
-            var finder = new DuplicateFinder(new AMetricGenerator[] { new HashMetricGenerator() }, di); //TODO: generators depend on input
-
-            finder.OnProgress += Finder_OnProgress;
-
-            var dupes = finder.FindDuplicates();
-
-            JArray result = new JArray();
-
-            foreach (var kv in dupes.dupesByGenerator)
-            {
-                foreach (var dupe in kv.Value)
-                {
-                    JArray fileList = new JArray();
-                    foreach (var fi in dupe)
-                    {
-                        fileList.Add(fi.FullName);
-                    }
-                    result.Add(fileList);
-                }
-            }
-
-            Console.WriteLine(result.ToString());
-        }
-
         private class ConsoleProcessReceiver : IProgressReceiver
         {
             public void Update(IProgress progress)
@@ -44,9 +17,27 @@ namespace duplicateVideoFinderConsole
             }
         }
 
+        private static readonly bool isInteractive;
+
+        static Program()
+        {
+            try
+            {
+                isInteractive = !Console.IsOutputRedirected && !Console.IsInputRedirected;
+            }
+            catch
+            {
+                isInteractive = false;
+            }
+        }
+
         private static object consoleLock = new object();
         private static void Finder_OnProgress(IProgress progress)
         {
+            if (!isInteractive)
+            {
+                return;
+            }
             lock (consoleLock)
             {
                 int top = Console.CursorTop;
@@ -72,12 +63,18 @@ namespace duplicateVideoFinderConsole
                 return;
             }
 
-            Console.Clear();
-            Console.WriteLine();
+            if (isInteractive)
+            {
+                Console.Clear();
+                Console.WriteLine();
+            }
 
             DirectoryInfo di = new DirectoryInfo(args[0]);
-
-            //FindDupesAndOutputToJSON(di);
+            if (!di.Exists)
+            {
+                Console.WriteLine("folder does not exist: " + args[0]);
+                return;
+            }
 
             var hashMetricGen = new HashMetricGenerator();
             var folderMetricGen = new FolderMetricGenerator(hashMetricGen, di, AppSettings.Instance.extensionsToProcess, SearchOption.AllDirectories);
@@ -108,8 +105,11 @@ namespace duplicateVideoFinderConsole
             }
 
             Console.WriteLine("Autosorted " + autosorted + " files");
-            Console.WriteLine("Press any key to end");
-            Console.ReadKey();
+            if (isInteractive)
+            {
+                Console.WriteLine("Press any key to end");
+                Console.ReadKey();
+            }
         }
     }
 }

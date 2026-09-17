@@ -4,6 +4,7 @@ using duplicateVideoFinder.Progresses;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -39,7 +40,7 @@ namespace duplicateVideoFinder
             MetricDict metrics = new MetricDict();
 
             var files = FileFinder.EnumerateFiles(targetDir, extensionsToProcess, searchOption);
-            int currentFile = 0; //TODO: make atomic increments to mitigate race conditions
+            int currentFile = 0;
             Parallel.ForEach(files, new Action<FileInfo>((f) =>
             {
                 var metric = metricGen.Generate(f);
@@ -47,7 +48,29 @@ namespace duplicateVideoFinder
                 {
                     metrics[f] = metric;
                 }
-                currentFile++;
+                System.Threading.Interlocked.Increment(ref currentFile);
+                progressReceiver?.Update(new FractionalProgress(currentFile, fileCount, f.FullName));
+            }));
+
+            return metrics;
+        }
+
+        public MetricDict GenerateMetrics(IEnumerable<FileInfo> files, IProgressReceiver progressReceiver)
+        {
+            var fileList = files as IReadOnlyList<FileInfo> ?? files.ToList();
+            int fileCount = fileList.Count;
+
+            MetricDict metrics = new MetricDict();
+
+            int currentFile = 0;
+            Parallel.ForEach(fileList, new Action<FileInfo>((f) =>
+            {
+                var metric = metricGen.Generate(f);
+                if (metric != null)
+                {
+                    metrics[f] = metric;
+                }
+                System.Threading.Interlocked.Increment(ref currentFile);
                 progressReceiver?.Update(new FractionalProgress(currentFile, fileCount, f.FullName));
             }));
 
