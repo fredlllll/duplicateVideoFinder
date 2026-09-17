@@ -1,22 +1,12 @@
 ﻿using duplicateVideoFinder;
 using duplicateVideoFinder.MetricGenerators;
-using duplicateVideoFinder.Progresses;
 using System;
-using System.Collections.Generic;
 using System.IO;
 
 namespace duplicateVideoFinderConsole
 {
     class Program
     {
-        private class ConsoleProcessReceiver : IProgressReceiver
-        {
-            public void Update(IProgress progress)
-            {
-                Finder_OnProgress(progress);
-            }
-        }
-
         private static readonly bool isInteractive;
 
         static Program()
@@ -32,7 +22,7 @@ namespace duplicateVideoFinderConsole
         }
 
         private static object consoleLock = new object();
-        private static void Finder_OnProgress(IProgress progress)
+        private static void Finder_OnProgress(duplicateVideoFinder.Progresses.IProgress progress)
         {
             if (!isInteractive)
             {
@@ -77,16 +67,18 @@ namespace duplicateVideoFinderConsole
             }
 
             var hashMetricGen = new HashMetricGenerator();
-            var folderMetricGen = new FolderMetricGenerator(hashMetricGen, di, AppSettings.Instance.extensionsToProcess, SearchOption.AllDirectories);
+            IDuplicateFinder finder = new DuplicateFinder(new AMetricGenerator[] { hashMetricGen }, di);
+            finder.OnProgress += Finder_OnProgress;
 
             Console.WriteLine("Generating metrics");
-            var metrics = folderMetricGen.GenerateMetrics(new ConsoleProcessReceiver());
+            var result = finder.FindDuplicates();
 
             Console.WriteLine("Finding Dupes");
-            var dupes = PotentialDuplicateFinder.FindDupes(metrics);
+            var dupes = result.dupesByGenerator[hashMetricGen.ID];
 
             Console.WriteLine("Autosorting Dupes");
             int autosorted = 0;
+            int errors = 0;
             foreach (var dupeFileCollection in dupes)
             {
                 var toKeep = DuplicateKeeper.GetFileToKeep(dupeFileCollection);
@@ -96,15 +88,24 @@ namespace duplicateVideoFinderConsole
                 }
                 foreach (var file in dupeFileCollection)
                 {
-                    if (file.FullName != toKeep.FullName && file.FullName.Contains("UNSORTED") && file.Exists)
+                    if (file.FullName != toKeep.FullName
+                        && file.FullName.IndexOf("UNSORTED", StringComparison.OrdinalIgnoreCase) >= 0
+                        && file.Exists)
                     {
-                        autosorted++;
-                        file.Delete(); //delete file in UNSORTED
+                        try
+                        {
+                            file.Delete(); //delete file in UNSORTED
+                            autosorted++;
+                        }
+                        catch (Exception)
+                        {
+                            errors++; //keep scanning; a locked file must not abort the sort
+                        }
                     }
                 }
             }
 
-            Console.WriteLine("Autosorted " + autosorted + " files");
+            Console.WriteLine("Autosorted " + autosorted + " files" + (errors > 0 ? " (" + errors + " failed)" : ""));
             if (isInteractive)
             {
                 Console.WriteLine("Press any key to end");

@@ -23,9 +23,13 @@ namespace duplicateVideoFinder.Metrics
             {
                 return false;
             }
-            if (this == metric)
+            if (ReferenceEquals(this, metric))
             {
                 return true;
+            }
+            if (hash == null || metric.hash == null || hash.Length != metric.hash.Length)
+            {
+                return false;
             }
             for (int i = 0; i < hash.Length; i++)
             {
@@ -39,7 +43,19 @@ namespace duplicateVideoFinder.Metrics
 
         public override int GetHashCode()
         {
-            return hash[0] + hash[1] + hash[2] + hash[3];
+            if (hash == null || hash.Length == 0)
+            {
+                return 0;
+            }
+            unchecked
+            {
+                int result = 17;
+                for (int i = 0; i < hash.Length; i++)
+                {
+                    result = result * 31 + hash[i];
+                }
+                return result;
+            }
         }
     }
 }

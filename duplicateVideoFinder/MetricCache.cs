@@ -78,6 +78,43 @@ namespace duplicateVideoFinder
             return null;
         }
 
+        // Old cache files (directory-fingerprint schema) have Entries rows without
+        // per-file FileLength/LastWriteUtcTicks. Detect and drop them so the fresh
+        // schema can be created; a full rescan is the safe fallback.
+        private static bool EnsureSchemaUsable(string dbPath)
+        {
+            try
+            {
+                using var db = new MetricCacheDbContext(dbPath);
+                string[] columns;
+                string checkSql = "PRAGMA table_info('Entries')";
+                using (var cmd = db.Database.GetDbConnection().CreateCommand())
+                {
+                    cmd.CommandText = checkSql;
+                    db.Database.OpenConnection();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        var cols = new List<string>();
+                        while (reader.Read())
+                        {
+                            cols.Add(reader.GetString(1));
+                        }
+                        columns = cols.ToArray();
+                    }
+                }
+                bool usable = columns.Contains("FileLength") && columns.Contains("LastWriteUtcTicks");
+                if (!usable)
+                {
+                    File.Delete(dbPath);
+                }
+                return usable;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         /// <summary>
         /// Splits the current files into ones whose cached metric is still valid
         /// (same length + last-write time) and ones that need recomputing.
@@ -89,6 +126,11 @@ namespace duplicateVideoFinder
             var result = new MetricCacheLoadResult();
             string dbPath = GetDbPath(directory);
             if (!File.Exists(dbPath))
+            {
+                result.FilesToCompute.AddRange(currentFiles);
+                return result;
+            }
+            if (!EnsureSchemaUsable(dbPath))
             {
                 result.FilesToCompute.AddRange(currentFiles);
                 return result;
@@ -209,18 +251,20 @@ namespace duplicateVideoFinder
 
         public static void DeleteCache(DirectoryInfo directory, string genId)
         {
-            ClearMetrics(directory, genId);
-        }
-
-        public static void ClearMetrics(DirectoryInfo directory, string genId)
-        {
             try
             {
-                string dbDir = GetDbDirectory(directory);
-                if (Directory.Exists(dbDir))
+                string dbPath = GetDbPath(directory);
+                if (!File.Exists(dbPath))
                 {
-                    Directory.Delete(dbDir, true);
+                    return;
                 }
+                using var db = new MetricCacheDbContext(dbPath);
+                db.Database.EnsureCreated();
+                var rows = db.Entries
+                    .Where(e => e.DirectoryPath == directory.FullName && e.GeneratorId == genId)
+                    .ToList();
+                db.Entries.RemoveRange(rows);
+                db.SaveChanges();
             }
             catch
             {

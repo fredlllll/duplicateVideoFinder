@@ -35,17 +35,17 @@ namespace duplicateVideoFinder.MetricGenerators
                         byte[] block = new byte[hashedBytesCount];
                         //start
                         fs.Seek(0, SeekOrigin.Begin);
-                        fs.Read(block, 0, block.Length);
+                        fs.ReadExactly(block);
                         incMd5.AppendData(block);
 
                         //middle
                         fs.Seek(fs.Length / 2 - hashedBytesCount / 2, SeekOrigin.Begin);
-                        fs.Read(block, 0, block.Length);
+                        fs.ReadExactly(block);
                         incMd5.AppendData(block);
 
                         //end
                         fs.Seek(-hashedBytesCount, SeekOrigin.End);
-                        fs.Read(block, 0, block.Length);
+                        fs.ReadExactly(block);
                         incMd5.AppendData(block);
 
                         hash = incMd5.GetHashAndReset();

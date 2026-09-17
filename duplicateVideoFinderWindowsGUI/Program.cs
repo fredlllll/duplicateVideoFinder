@@ -27,18 +27,20 @@ namespace duplicateVideoFinderWindowsGUI
         {
             Task.Run(async () =>
             {
+                bool ready = false;
                 try
                 {
                     // downloads once into the app folder; subsequent runs skip the download
                     await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official);
+                    ready = true;
                 }
                 catch
                 {
-                    // FFmpeg unavailable: duration metrics just won't be computed
+                    // FFmpeg unavailable: duration checkbox stays disabled
                 }
-                finally
+                if (startup.IsHandleCreated)
                 {
-                    startup.BeginInvoke(new Action(() => startup.SetFFmpegReady(true)));
+                    startup.BeginInvoke(new Action(() => startup.SetFFmpegReady(ready)));
                 }
             });
         }

@@ -4,29 +4,34 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Linq;
 
 namespace duplicateVideoFinderWindowsGUI
 {
     public partial class FrmSelectFilesToKeep : Form
     {
         DuplicateFinderResult dfr;
+        readonly Queue<string> pendingGenIds = new Queue<string>();
         string currentGenId = "";
+        FileInfo currentKeeper;
+
         List<DupeFileCollection> CurrentGen
         {
             get
             {
-                if (dfr.dupesByGenerator.Count > 0)
+                if (dfr != null && dfr.dupesByGenerator.Count > 0 && !string.IsNullOrEmpty(currentGenId))
                 {
                     return dfr.dupesByGenerator[currentGenId];
                 }
                 return null;
             }
         }
-        DupeFileCollection currentDupes;
-        FileInfo currentKeeper;
+
+        // decreases each time a new batch starts (SetCurrentDupes or Next),
+        // so the UI-thread Invoke can tell that a stale batch is no longer current
+        int nextBatchId = 0;
 
         public FrmSelectFilesToKeep()
         {
@@ -35,35 +40,75 @@ namespace duplicateVideoFinderWindowsGUI
 
         Bitmap MakeThumb(FileInfo fi)
         {
-            ShellFile shell = ShellFile.FromFilePath(fi.FullName);
-            var tttt = shell.Properties.System.Video;
-            return shell.Thumbnail.ExtraLargeBitmap;
-
-
-            /*var tmpPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".jpg");
-            Conversion.Snapshot(fi.FullName, tmpPath, TimeSpan.FromSeconds(15)).Start().Wait();
-            Bitmap daImg = new Bitmap(128, 128);
-            using (var g = Graphics.FromImage(daImg))
-            using (Bitmap daThumb = new Bitmap(tmpPath))
+            try
             {
-                g.DrawImage(daThumb, new Rectangle(0, 0, 128, 128));
-                g.Flush();
+                ShellFile shell = ShellFile.FromFilePath(fi.FullName);
+                return shell.Thumbnail.ExtraLargeBitmap;
             }
-            File.Delete(tmpPath);
-
-            return daImg;*/
+            catch
+            {
+                // no shell thumbnail for this file: show it without an image
+                return null;
+            }
         }
 
-        Task SetCurrentDupes(DupeFileCollection dupes)
+        void SetCurrentDupes(DupeFileCollection dupes)
         {
             FileInfo toKeep = DuplicateKeeper.GetFileToKeep(dupes);
-            currentKeeper = toKeep;
-            return new Task(new Action(() =>
+
+            // identifier for this batch; later batches invalidate the queued adds of this one
+            int batchId = --nextBatchId;
+
+            Task.Run(() =>
             {
-                currentDupes = dupes;
+                var additions = new List<Func<ListViewItem>>();
+                foreach (var f in dupes)
+                {
+                    if (!f.Exists)
+                    {
+                        continue;
+                    }
+                    Image thumb = MakeThumb(f);
+                    bool isKeeper = toKeep != null && f.FullName == toKeep.FullName;
+
+                    var fileName = f.Name;
+                    var file = f;
+                    string tooltip = "s: " + FormatFileSize(f.Length) + " f:" + f.DirectoryName + (isKeeper ? "\r\n(Recommended: keep this one)" : "");
+                    var thumbKey = file.FullName;
+
+                    additions.Add(() =>
+                    {
+                        var li = new ListViewItem();
+                        li.Text = fileName;
+                        li.Checked = true;
+                        li.ToolTipText = tooltip;
+                        li.Tag = file;
+                        if (thumb != null)
+                        {
+                            try
+                            {
+                                lstFiles.LargeImageList.Images.Add(thumbKey, thumb);
+                                li.ImageKey = thumbKey;
+                            }
+                            catch
+                            {
+                                // duplicate key or image-list problem: show without an image
+                            }
+                        }
+                        if (isKeeper)
+                        {
+                            li.BackColor = Color.LightSteelBlue;
+                        }
+                        return li;
+                    });
+                }
 
                 this.Invoke(new Action(() =>
                 {
+                    if (batchId != nextBatchId)
+                    {
+                        return; // a newer batch superseded this one while we were making thumbs
+                    }
                     lstFiles.Items.Clear();
                     if (lstFiles.LargeImageList == null)
                     {
@@ -73,41 +118,27 @@ namespace duplicateVideoFinderWindowsGUI
                         imgList.TransparentColor = Color.Transparent;
                         lstFiles.LargeImageList = imgList;
                     }
-                    lstFiles.LargeImageList.Images.Clear(); //lets hope the finalizer calls dispose on all these bitmaps...
-                }));
+                    lstFiles.LargeImageList.Images.Clear();
 
-
-                for (int i = 0; i < dupes.Count; i++)
-                {
-                    var f = dupes[i];
-                    if (f.Exists)
+                    foreach (var add in additions)
                     {
-                        Image thumb = MakeThumb(f);
-                        bool isKeeper = toKeep != null && f.FullName == toKeep.FullName;
-                        this.BeginInvoke(new Action(() =>
+                        ListViewItem li;
+                        try
                         {
-                            lstFiles.LargeImageList.Images.Add(f.FullName, thumb);
-
-                            var li = new ListViewItem();
-                            li.Text = f.Name;
-                            li.Checked = true;
-                            if (isKeeper)
-                            {
-                                li.BackColor = Color.LightSteelBlue;
-                                li.ToolTipText = "s: " + FormatFileSize(f.Length) + " f:" + f.DirectoryName + "\r\n(Recommended: keep this one)";
-                            }
-                            else
-                            {
-                                li.ToolTipText = "s: " + FormatFileSize(f.Length) + " f:" + f.DirectoryName;
-                            }
-                            li.ImageKey = f.FullName;
-                            li.Tag = f;
-
+                            li = add();
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+                        if (li != null)
+                        {
                             lstFiles.Items.Add(li);
-                        }));
+                        }
                     }
-                }
-            }));
+                    currentKeeper = toKeep;
+                }));
+            });
         }
 
         string FormatFileSize(long bytes)
@@ -121,15 +152,19 @@ namespace duplicateVideoFinderWindowsGUI
                 len /= 1024;
             }
 
-            // Adjust the format string to your preferences. For example "{0:0.#}{1}" would
-            // show a single decimal place, and no space.
             return String.Format("{0:0.##} {1}", len, sizes[order]);
         }
 
         public void SetDuplicates(DuplicateFinderResult dfr)
         {
             this.dfr = dfr;
-            this.currentGenId = dfr.dupesByGenerator.First().Key;
+            foreach (var kv in dfr.dupesByGenerator)
+            {
+                if (kv.Value.Count > 0)
+                {
+                    pendingGenIds.Enqueue(kv.Key);
+                }
+            }
             btnNext_Click(null, null);
         }
 
@@ -142,55 +177,86 @@ namespace duplicateVideoFinderWindowsGUI
             }
         }
 
-        private void btnNext_Click(object sender, EventArgs e)
+        private void ShowNextDupeGroup()
         {
-            foreach (ListViewItem li in lstFiles.Items)
-            {
-                if (!li.Checked)
-                {
-                    var fi = li.Tag as FileInfo;
-                    try
-                    {
-                        File.Delete(fi.FullName);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Failed to delete '" + fi.FullName + "' : " + ex.Message);
-                    }
-                }
-            }
-            var cg = CurrentGen;
             while (true)
             {
+                var cg = CurrentGen;
                 if (cg != null && cg.Count > 0)
                 {
                     //pop next dupecollection
                     var tmp = cg[cg.Count - 1];
                     cg.RemoveAt(cg.Count - 1);
 
-                    int existingFiles = 0;
-                    foreach (var f in tmp)
-                    {
-                        if (f.Exists)
-                        {
-                            existingFiles++;
-                        }
-                    }
+                    int existingFiles = tmp.Count(f => f.Exists);
                     if (existingFiles <= 1)
                     {
                         //if only 1 file or less exist skip it
                         continue;
                     }
-                    SetCurrentDupes(tmp).Start();
-                    Text = cg.Count + " Potential Dupes Remaining";
+                    SetCurrentDupes(tmp);
+                    Text = "(" + currentGenId + ") " + cg.Count + " Potential Dupes Remaining";
+                    return;
                 }
-                else
+
+                // current generator exhausted: move to the next one with dupes
+                if (pendingGenIds.Count > 0)
                 {
-                    MessageBox.Show("Thats it! No more dupes");
-                    this.Close();
+                    currentGenId = pendingGenIds.Dequeue();
+                    continue;
                 }
-                break;
+
+                MessageBox.Show("Thats it! No more dupes");
+                this.Close();
+                return;
             }
+        }
+
+        private async void btnNext_Click(object sender, EventArgs e)
+        {
+            btnNext.Enabled = false;
+            // invalidate any still-running thumbnail batch so stale items don't land in the next group
+            unchecked { nextBatchId--; }
+
+            List<string> toDelete = new List<string>();
+            foreach (ListViewItem li in lstFiles.Items)
+            {
+                if (!li.Checked)
+                {
+                    var fi = li.Tag as FileInfo;
+                    if (fi != null)
+                    {
+                        toDelete.Add(fi.FullName);
+                    }
+                }
+            }
+
+            List<string> failed = new List<string>();
+            if (toDelete.Count > 0)
+            {
+                await Task.Run(() =>
+                {
+                    foreach (string path in toDelete)
+                    {
+                        try
+                        {
+                            File.Delete(path);
+                        }
+                        catch (Exception)
+                        {
+                            failed.Add(path);
+                        }
+                    }
+                });
+            }
+
+            btnNext.Enabled = true;
+            foreach (string path in failed)
+            {
+                MessageBox.Show("Failed to delete '" + path + "'");
+            }
+
+            ShowNextDupeGroup();
         }
     }
 }

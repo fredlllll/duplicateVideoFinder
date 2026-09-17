@@ -4,9 +4,9 @@ namespace duplicateVideoFinder.Metrics
 {
     public class DurationMetric : AMetric
     {
-        public ulong duration;
+        public double duration;
 
-        public DurationMetric(ulong duration = 0)
+        public DurationMetric(double duration = 0)
         {
             this.duration = duration;
         }

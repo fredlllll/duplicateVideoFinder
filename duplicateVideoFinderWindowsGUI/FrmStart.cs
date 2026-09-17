@@ -11,6 +11,7 @@ namespace duplicateVideoFinderWindowsGUI
     public partial class FrmStart : Form
     {
         FrmSelectFilesToKeep nextForm;
+        bool ffmpegReady;
 
         public FrmStart()
         {
@@ -24,6 +25,7 @@ namespace duplicateVideoFinderWindowsGUI
 
         public void SetFFmpegReady(bool ready)
         {
+            ffmpegReady = ready;
             chkDuration.Enabled = ready;
             startButtonEnableCheck();
         }
@@ -40,7 +42,6 @@ namespace duplicateVideoFinderWindowsGUI
             btnStart.Enabled = false;
             chkHash.Enabled = false;
             chkDuration.Enabled = false;
-            chkThumb.Enabled = false;
             chkTopDir.Enabled = false;
             chkDeleteCache.Enabled = false;
             DirectoryInfo di = new DirectoryInfo(txtDirectory.Text);
@@ -54,38 +55,63 @@ namespace duplicateVideoFinderWindowsGUI
             {
                 gens.Add(new DurationMetricGenerator());
             }
-            if (chkThumb.Checked)
-            {
-                //gens.Add(new ThumbMetricGenerator());
-            }
 
             IDuplicateFinder finder = new DuplicateFinder(gens.ToArray(), di, chkTopDir.Checked, chkDeleteCache.Checked);
             finder.OnProgress += Finder_OnProgress;
 
-            var dupes = await Task.Factory.StartNew(() =>
+            DuplicateFinderResult dupes;
+            try
             {
-                return finder.FindDuplicates();
-            });
+                dupes = await Task.Factory.StartNew(() =>
+                {
+                    return finder.FindDuplicates();
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Scan failed: " + ex.Message);
+                //re-enable inputs so the user can try again
+                btnSearch.Enabled = true;
+                chkHash.Enabled = true;
+                chkDuration.Enabled = ffmpegReady;
+                chkTopDir.Enabled = true;
+                chkDeleteCache.Enabled = true;
+                startButtonEnableCheck();
+                return;
+            }
 
             this.Hide();
             nextForm.Show();
             nextForm.SetDuplicates(dupes);
-
-
-            btnStart.Enabled = true;
         }
 
+        private readonly object progressLock = new object();
         DateTime lastProgress = DateTime.Now;
         private void Finder_OnProgress(duplicateVideoFinder.Progresses.IProgress progress)
         {
-            if ((DateTime.Now - lastProgress).TotalSeconds > 0.25 || progress is duplicateVideoFinder.Progresses.BasicProgress)
+            bool shouldUpdate;
+            lock (progressLock)
             {
-                this.BeginInvoke(new Action(() =>
+                shouldUpdate = progress is duplicateVideoFinder.Progresses.BasicProgress || (DateTime.Now - lastProgress).TotalSeconds > 0.25;
+                if (shouldUpdate)
                 {
-                    this.Text = "Progress: " + progress.ToString();
-                    this.progressBar1.Value = (int)(100 * progress.Progress);
-                }));
-                lastProgress = DateTime.Now;
+                    lastProgress = DateTime.Now;
+                }
+            }
+            if (shouldUpdate)
+            {
+                try
+                {
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        this.Text = "Progress: " + progress.ToString();
+                        this.progressBar1.Value = (int)(100 * progress.Progress);
+                    }));
+                }
+                catch (InvalidOperationException)
+                {
+                    // handle is gone, form is closing
+                }
             }
         }
 
@@ -110,18 +136,8 @@ namespace duplicateVideoFinderWindowsGUI
             {
                 count++;
             }
-            if (chkThumb.Checked)
-            {
-                count++;
-            }
 
-            btnStart.Enabled = count > 0;
-            if (!btnStart.Enabled)
-            {
-                return;
-            }
-
-            btnStart.Enabled = Directory.Exists(txtDirectory.Text);
+            btnStart.Enabled = count > 0 && Directory.Exists(txtDirectory.Text);
         }
 
         private void genCheckbox_CheckedChanged(object sender, EventArgs e)

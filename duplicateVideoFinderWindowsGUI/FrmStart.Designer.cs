@@ -33,7 +33,6 @@ namespace duplicateVideoFinderWindowsGUI
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.chkHash = new System.Windows.Forms.CheckBox();
             this.chkDuration = new System.Windows.Forms.CheckBox();
-            this.chkThumb = new System.Windows.Forms.CheckBox();
             this.btnSearch = new System.Windows.Forms.Button();
             this.fbd = new System.Windows.Forms.FolderBrowserDialog();
             this.chkTopDir = new System.Windows.Forms.CheckBox();
@@ -106,19 +105,6 @@ namespace duplicateVideoFinderWindowsGUI
             this.chkDuration.UseVisualStyleBackColor = true;
             this.chkDuration.CheckedChanged += new System.EventHandler(this.genCheckbox_CheckedChanged);
             // 
-            // chkThumb
-            // 
-            this.chkThumb.AutoSize = true;
-            this.chkThumb.Enabled = false;
-            this.chkThumb.Location = new System.Drawing.Point(12, 105);
-            this.chkThumb.Name = "chkThumb";
-            this.chkThumb.Size = new System.Drawing.Size(117, 19);
-            this.chkThumb.TabIndex = 6;
-            this.chkThumb.Text = "Check By Thumb";
-            this.toolTips.SetToolTip(this.chkThumb, "Check for duplicates using visual methods");
-            this.chkThumb.UseVisualStyleBackColor = true;
-            this.chkThumb.CheckedChanged += new System.EventHandler(this.genCheckbox_CheckedChanged);
-            // 
             // btnSearch
             // 
             this.btnSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -165,7 +151,6 @@ namespace duplicateVideoFinderWindowsGUI
             this.Controls.Add(this.chkDeleteCache);
             this.Controls.Add(this.chkTopDir);
             this.Controls.Add(this.btnSearch);
-            this.Controls.Add(this.chkThumb);
             this.Controls.Add(this.chkDuration);
             this.Controls.Add(this.chkHash);
             this.Controls.Add(this.progressBar1);
@@ -186,7 +171,6 @@ namespace duplicateVideoFinderWindowsGUI
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.CheckBox chkHash;
         private System.Windows.Forms.CheckBox chkDuration;
-        private System.Windows.Forms.CheckBox chkThumb;
         private System.Windows.Forms.Button btnSearch;
         private System.Windows.Forms.FolderBrowserDialog fbd;
         private System.Windows.Forms.CheckBox chkTopDir;
