@@ -1,7 +1,7 @@
-﻿using System.IO;
+﻿using System.Globalization;
+using System.IO;
+using System.Text.Json;
 using duplicateVideoFinder.Metrics;
-using Newtonsoft.Json.Linq;
-using Xabe.FFmpeg;
 
 namespace duplicateVideoFinder.MetricGenerators
 {
@@ -13,25 +13,33 @@ namespace duplicateVideoFinder.MetricGenerators
         {
             try
             {
-                var t = Probe.New().Start("-v quiet -of json -show_format -show_streams \"" + file.FullName + "\"");
-                t.Wait();
-                string result = t.Result;
-                JObject probe = JObject.Parse(result);
-                JArray streams = probe["streams"] as JArray;
-                JObject format = probe["format"] as JObject;
-                double? duration = null;
-                if (format != null && format["duration"] != null)
+                string result = Ffprobe.Run("-v quiet -of json -show_format -show_streams \"" + file.FullName + "\"");
+                if (string.IsNullOrEmpty(result))
                 {
-                    duration = format["duration"].Value<double>();
+                    return null;
                 }
-                if (!duration.HasValue && streams != null)
+
+                using var probe = JsonDocument.Parse(result);
+                double? duration = null;
+
+                if (probe.RootElement.TryGetProperty("format", out var format)
+                    && TryGetDuration(format, out double formatDuration))
                 {
-                    foreach (JObject stream in streams)
+                    duration = formatDuration;
+                }
+
+                if (!duration.HasValue
+                    && probe.RootElement.TryGetProperty("streams", out var streams)
+                    && streams.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var stream in streams.EnumerateArray())
                     {
-                        string codecType = stream["codec_type"]?.Value<string>();
-                        if ("video".Equals(codecType))
+                        bool isVideo = stream.TryGetProperty("codec_type", out var codecType)
+                            && codecType.ValueKind == JsonValueKind.String
+                            && "video".Equals(codecType.GetString());
+                        if (isVideo && TryGetDuration(stream, out double streamDuration))
                         {
-                            duration = stream["duration"]?.Value<double>();
+                            duration = streamDuration;
                         }
                         if (duration.HasValue)
                         {
@@ -39,6 +47,7 @@ namespace duplicateVideoFinder.MetricGenerators
                         }
                     }
                 }
+
                 if (duration.HasValue)
                 {
                     return new DurationMetric(duration.Value);
@@ -50,6 +59,26 @@ namespace duplicateVideoFinder.MetricGenerators
                 // unparseable/ffprobe failure: treat as unknown duration
                 return null;
             }
+        }
+
+        // ffprobe reports "duration" as a string (e.g. "5.000000") in most
+        // builds, but occasionally as a number; accept both.
+        private static bool TryGetDuration(JsonElement element, out double duration)
+        {
+            duration = 0;
+            if (!element.TryGetProperty("duration", out var value))
+            {
+                return false;
+            }
+            if (value.ValueKind == JsonValueKind.Number)
+            {
+                return value.TryGetDouble(out duration);
+            }
+            if (value.ValueKind == JsonValueKind.String)
+            {
+                return double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out duration);
+            }
+            return false;
         }
     }
 }

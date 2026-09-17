@@ -1,12 +1,12 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.IO;
+using System.Text.Json.Nodes;
 
 namespace duplicateVideoFinder
 {
     public class Settings
     {
-        public JObject Data { get; }
+        public JsonNode Data { get; }
 
         public Settings(string file = "settings.json")
         {
@@ -17,7 +17,7 @@ namespace duplicateVideoFinder
                     "settings.json not found. Expected it in the executable directory or the current working directory.",
                     file);
             }
-            Data = JObject.Parse(File.ReadAllText(path));
+            Data = JsonNode.Parse(File.ReadAllText(path));
         }
 
         private static string FindSettingsFile(string file)

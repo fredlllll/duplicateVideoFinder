@@ -1,10 +1,10 @@
 ﻿using duplicateVideoFinder.Metrics;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 
 namespace duplicateVideoFinder
 {
@@ -54,6 +54,13 @@ namespace duplicateVideoFinder
     {
         private const string CacheFolderName = ".dvf";
         private const string DbFileName = "metrics.db";
+
+        // metric classes expose their state as public fields, which
+        // System.Text.Json ignores unless IncludeFields is set
+        private static readonly JsonSerializerOptions MetricJsonOptions = new JsonSerializerOptions
+        {
+            IncludeFields = true
+        };
 
         private static string GetDbDirectory(DirectoryInfo directory)
         {
@@ -179,7 +186,7 @@ namespace duplicateVideoFinder
                         {
                             try
                             {
-                                var metric = JObject.Parse(row.MetricJson).ToObject(t) as AMetric;
+                                var metric = JsonSerializer.Deserialize(row.MetricJson, t, MetricJsonOptions) as AMetric;
                                 if (metric != null)
                                 {
                                     result.Reusable[f] = metric;
@@ -246,12 +253,14 @@ namespace duplicateVideoFinder
                 foreach (var kv in computed)
                 {
                     var f = kv.Key;
+                    string metricType = kv.Value.GetType().FullName;
+                    string metricJson = JsonSerializer.Serialize(kv.Value, kv.Value.GetType(), MetricJsonOptions);
                     if (byPath.TryGetValue(f.FullName, out var existing))
                     {
                         existing.FileLength = f.Length;
                         existing.LastWriteUtcTicks = f.LastWriteTimeUtc.Ticks;
-                        existing.MetricType = kv.Value.GetType().FullName;
-                        existing.MetricJson = JObject.FromObject(kv.Value).ToString();
+                        existing.MetricType = metricType;
+                        existing.MetricJson = metricJson;
                     }
                     else
                     {
@@ -262,8 +271,8 @@ namespace duplicateVideoFinder
                             FilePath = f.FullName,
                             FileLength = f.Length,
                             LastWriteUtcTicks = f.LastWriteTimeUtc.Ticks,
-                            MetricType = kv.Value.GetType().FullName,
-                            MetricJson = JObject.FromObject(kv.Value).ToString()
+                            MetricType = metricType,
+                            MetricJson = metricJson
                         });
                     }
                 }

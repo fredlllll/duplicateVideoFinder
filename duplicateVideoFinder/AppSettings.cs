@@ -1,6 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.Text.Json.Nodes;
 
 namespace duplicateVideoFinder
 {
@@ -13,13 +12,13 @@ namespace duplicateVideoFinder
         public AppSettings() : base()
         {
             //extensions to process
-            JArray extensions = Data["extensionsToProcess"] as JArray;
+            JsonArray extensions = Data["extensionsToProcess"] as JsonArray;
             if (extensions != null && extensions.Count > 0)
             {
                 extensionsToProcess = new string[extensions.Count];
                 for (int i = 0; i < extensionsToProcess.Length; i++)
                 {
-                    extensionsToProcess[i] = extensions[i].Value<string>();
+                    extensionsToProcess[i] = extensions[i].GetValue<string>();
                 }
             }
             else

@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.4" />
-    <PackageReference Include="Xabe.FFmpeg.Downloader" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -24,7 +24,7 @@ Metric-based duplicate detection:
 
 Available generators:
 - `HashMetricGenerator` - MD5 hash of file samples (beginning/middle/end for large files; `ReadExactly` so short reads can't yield bad hashes)
-- `DurationMetricGenerator` - FFmpeg-based video duration (requires Xabe.FFmpeg); reads ffprobe `duration` (seconds), not `duration_ts`; returns null on unreadable files instead of throwing
+- `DurationMetricGenerator` - ffprobe-based video duration via the built-in `Ffprobe` helper (no third-party FFmpeg package); reads ffprobe `duration` (seconds), not `duration_ts`; returns null on unreadable files instead of throwing
 
 ## Metric Cache (SQLite / EF Core)
 
@@ -38,6 +38,7 @@ Available generators:
 - `MetricCache.DeleteCache(dir, genId)` removes only the given generator's rows
 - A failed cache read/save is silently swallowed — the app just rescans; never blocks on cache errors
 - Metric types are resolved by full name (`HashMetric`/`DurationMetric`); unknown types are skipped on load
+- Metric JSON columns are serialized with `System.Text.Json` (not Newtonsoft) using `IncludeFields = true` (the metric classes expose public fields); the on-disk format (`{"hash":"..."}`/`{"duration":N}`) is unchanged, so Newtonsoft-era rows still load
 - Both the GUI and the console go through `DuplicateFinder` (console no longer bypasses the cache), so repeated runs reuse cached metrics
 
 ## Automatic Keep Selection
@@ -62,6 +63,8 @@ Wired into both UIs:
 - `FolderMetricGenerator.cs` - Orchestrates parallel metric computation (atomic progress counter; overload accepting a specific file list; per-file try/catch so one bad file can't abort a scan)
 - `PotentialDuplicateFinder.cs` - Groups files by metric equality
 - `MetricCache.cs` - EF Core SQLite persistence + per-file incremental invalidation
+- `Ffprobe.cs` - Locates (`Ffprobe.ExecutablePath` → app dir → PATH) and runs ffprobe via `Process`; replaces Xabe.FFmpeg
+- `FFmpegSetup.cs` (GUI) - Downloads the Windows FFmpeg zip once, extracts `ffprobe.exe` to `%LOCALAPPDATA%\duplicateVideoFinder\ffmpeg`, points `Ffprobe` at it; replaces Xabe.FFmpeg.Downloader
 - `HashMetricGenerator.cs` - Samples 256 bytes from file start, middle, and end
 - `DuplicateKeeper.cs` - Automatic "which file to keep" scoring
 - `FrmSelectFilesToKeep.cs` - GUI review flow across all generators (batch-token protects against stale thumbnail races)
@@ -69,10 +72,10 @@ Wired into both UIs:
 ## Gotchas
 
 - `DurationMetricGenerator` depends on FFmpeg being available. GUI downloads it at startup **in the background**
-  (duration checkbox stays disabled until ready — only enabled on success); console needs FFmpeg in PATH
+  (duration checkbox stays disabled until ready — only enabled on success); console needs ffprobe in PATH or next to the exe
 - `DurationMetric` stores ffprobe `duration` in **seconds** (bitrate = bytes*8/seconds)
 - `DuplicateKeeper.FilenameQuality` is a rough heuristic; real titles vs IDs can be ambiguous
 - Console's autosort only deletes duplicates under paths containing `UNSORTED` (case-insensitive, matching the keeper);
   it never deletes the keeper file; a locked file is counted as failed, not fatal
-- Metric metrics are stored as JSON text columns; a metric class rename makes old cache rows unreadable (they're skipped)
+- Metric metrics are stored as JSON text columns (`System.Text.Json`, `IncludeFields = true`); a metric class/field rename makes old cache rows unreadable (they're skipped)
 - No test suite exists

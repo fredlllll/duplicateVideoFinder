@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Xabe.FFmpeg.Downloader;
 
 namespace duplicateVideoFinderWindowsGUI
 {
@@ -30,9 +29,8 @@ namespace duplicateVideoFinderWindowsGUI
                 bool ready = false;
                 try
                 {
-                    // downloads once into the app folder; subsequent runs skip the download
-                    await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official);
-                    ready = true;
+                    // downloads once into a per-user tools folder; subsequent runs skip the download
+                    ready = await FFmpegSetup.EnsureFfprobeAsync();
                 }
                 catch
                 {
