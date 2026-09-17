@@ -29,11 +29,13 @@ Available generators:
 ## Metric Cache (SQLite / EF Core)
 
 - SQLite DB lives at `{scannedFolder}/.dvf/metrics.db` (one file per scanned folder)
-- EF Core 10 via `MetricCacheDbContext` (table: `Entries`)
+- EF Core 10 via `MetricCacheDbContext` (table: `Entries`), schema managed with **EF Core migrations** (in `Migrations/`); `db.Database.Migrate()` is auto-applied on every cache open via `MetricCache.EnsureMigrated`
+- `Pooling=False` is in the SQLite connection string so a disposed context never locks the file (Pooling would keep it open and break the drop-and-recreate path on Windows)
+- Pre-migrations DBs (created by the old `EnsureCreated` build: `Entries` without `__EFMigrationsHistory`) can't be upgraded in place — they are dropped and recreated by `Migrate()`; a full rescan is the safe fallback
 - **Per-file incremental invalidation**: every cache row stores that file's own `FileLength` + `LastWriteUtcTicks` fingerprint; on rescan only new/changed files are recomputed, all other files reuse their cached metric
 - `MetricCache.LoadMetrics(dir, genId, currentFiles)` returns a `MetricCacheLoadResult` with `Reusable` (valid cached metrics) and `FilesToCompute` (the delta)
 - `MetricCache.SaveMetrics(dir, genId, currentFiles, computed)` upserts only the freshly computed rows and prunes rows for files that no longer exist
-- `MetricCache.DeleteCache(dir, genId)` removes only the given generator's rows; old schema files (missing per-file columns) are detected and deleted so a fresh DB is recreated
+- `MetricCache.DeleteCache(dir, genId)` removes only the given generator's rows
 - A failed cache read/save is silently swallowed — the app just rescans; never blocks on cache errors
 - Metric types are resolved by full name (`HashMetric`/`DurationMetric`); unknown types are skipped on load
 - Both the GUI and the console go through `DuplicateFinder` (console no longer bypasses the cache), so repeated runs reuse cached metrics

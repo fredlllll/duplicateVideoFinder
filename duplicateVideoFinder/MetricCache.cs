@@ -33,7 +33,7 @@ namespace duplicateVideoFinder
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite("Data Source=" + dbPath);
+            optionsBuilder.UseSqlite("Data Source=" + dbPath + ";Pooling=False");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -78,41 +78,65 @@ namespace duplicateVideoFinder
             return null;
         }
 
-        // Old cache files (directory-fingerprint schema) have Entries rows without
-        // per-file FileLength/LastWriteUtcTicks. Detect and drop them so the fresh
-        // schema can be created; a full rescan is the safe fallback.
-        private static bool EnsureSchemaUsable(string dbPath)
+        // Brings the cache DB up to the current schema by applying EF migrations
+        // (the InitialCreate migration creates the schema on a fresh DB).
+        // A DB written by an older EnsureCreated build has an Entries table but no
+        // __EFMigrationsHistory and can't be upgraded in place, so it is dropped
+        // and recreated; a full rescan is the safe fallback.
+        private static bool EnsureMigrated(string dbPath)
         {
             try
             {
-                using var db = new MetricCacheDbContext(dbPath);
-                string[] columns;
-                string checkSql = "PRAGMA table_info('Entries')";
-                using (var cmd = db.Database.GetDbConnection().CreateCommand())
+                if (!File.Exists(dbPath))
                 {
-                    cmd.CommandText = checkSql;
-                    db.Database.OpenConnection();
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        var cols = new List<string>();
-                        while (reader.Read())
-                        {
-                            cols.Add(reader.GetString(1));
-                        }
-                        columns = cols.ToArray();
-                    }
+                    using var fresh = new MetricCacheDbContext(dbPath);
+                    fresh.Database.Migrate();
+                    return true;
                 }
-                bool usable = columns.Contains("FileLength") && columns.Contains("LastWriteUtcTicks");
-                if (!usable)
+
+                if (!IsMigratedDatabase(dbPath))
                 {
+                    // pre-migrations DB: drop it and let Migrate recreate the current schema
                     File.Delete(dbPath);
+                    using var fresh = new MetricCacheDbContext(dbPath);
+                    fresh.Database.Migrate();
+                    return true;
                 }
-                return usable;
+
+                using (var db = new MetricCacheDbContext(dbPath))
+                {
+                    db.Database.Migrate();
+                }
+                return true;
             }
             catch
             {
-                return false;
+                // existing DB is corrupt/unreadable: drop it and rebuild fresh
+                try
+                {
+                    File.Delete(dbPath);
+                    using var fresh = new MetricCacheDbContext(dbPath);
+                    fresh.Database.Migrate();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
             }
+        }
+
+        // A DB written by the pre-migrations build has Entries but no
+        // __EFMigrationsHistory; it can't be upgraded in place, so it must be
+        // dropped and recreated. The connection is closed before returning so
+        // the caller can safely File.Delete it on Windows.
+        private static bool IsMigratedDatabase(string dbPath)
+        {
+            using var db = new MetricCacheDbContext(dbPath);
+            db.Database.OpenConnection();
+            using var cmd = db.Database.GetDbConnection().CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory'";
+            return Convert.ToInt64(cmd.ExecuteScalar()) > 0;
         }
 
         /// <summary>
@@ -130,7 +154,7 @@ namespace duplicateVideoFinder
                 result.FilesToCompute.AddRange(currentFiles);
                 return result;
             }
-            if (!EnsureSchemaUsable(dbPath))
+            if (!EnsureMigrated(dbPath))
             {
                 result.FilesToCompute.AddRange(currentFiles);
                 return result;
@@ -139,7 +163,6 @@ namespace duplicateVideoFinder
             try
             {
                 using var db = new MetricCacheDbContext(dbPath);
-                db.Database.EnsureCreated();
                 var rows = db.Entries.AsNoTracking()
                     .Where(e => e.DirectoryPath == directory.FullName && e.GeneratorId == genId)
                     .ToList();
@@ -196,8 +219,12 @@ namespace duplicateVideoFinder
             {
                 string dbDir = GetDbDirectory(directory);
                 Directory.CreateDirectory(dbDir);
-                using var db = new MetricCacheDbContext(GetDbPath(directory));
-                db.Database.EnsureCreated();
+                string dbPath = GetDbPath(directory);
+                if (!EnsureMigrated(dbPath))
+                {
+                    return;
+                }
+                using var db = new MetricCacheDbContext(dbPath);
 
                 var rows = db.Entries
                     .Where(e => e.DirectoryPath == directory.FullName && e.GeneratorId == genId)
@@ -258,8 +285,11 @@ namespace duplicateVideoFinder
                 {
                     return;
                 }
+                if (!EnsureMigrated(dbPath))
+                {
+                    return;
+                }
                 using var db = new MetricCacheDbContext(dbPath);
-                db.Database.EnsureCreated();
                 var rows = db.Entries
                     .Where(e => e.DirectoryPath == directory.FullName && e.GeneratorId == genId)
                     .ToList();
